@@ -1,6 +1,8 @@
 package com.railtrack.common.exception;
 
-import com.railtrack.pnr.dto.response.ErrorResponse;
+import com.railtrack.auth.exception.InvalidCredentialsException;
+import com.railtrack.auth.exception.UserAlreadyExistsException;
+import com.railtrack.common.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,9 +14,12 @@ import java.time.LocalDateTime;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(com.railtrack.common.exception.RailwayApiException.class)
+    /**
+     * Railway API Exception
+     */
+    @ExceptionHandler(RailwayApiException.class)
     public ResponseEntity<ErrorResponse> handleRailwayApiException(
-            com.railtrack.common.exception.RailwayApiException ex,
+            RailwayApiException ex,
             HttpServletRequest request) {
 
         ErrorResponse error = new ErrorResponse(
@@ -30,6 +35,51 @@ public class GlobalExceptionHandler {
                 .body(error);
     }
 
+    /**
+     * User Already Exists Exception
+     */
+    @ExceptionHandler(UserAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleUserAlreadyExistsException(
+            UserAlreadyExistsException ex,
+            HttpServletRequest request) {
+
+        ErrorResponse error = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.CONFLICT.value(),
+                "User Already Exists",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(error);
+    }
+
+    /**
+     * Invalid Login Credentials
+     */
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidCredentialsException(
+            InvalidCredentialsException ex,
+            HttpServletRequest request) {
+
+        ErrorResponse error = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.UNAUTHORIZED.value(),
+                "Authentication Failed",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(error);
+    }
+
+    /**
+     * Handles all unhandled exceptions
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(
             Exception ex,
