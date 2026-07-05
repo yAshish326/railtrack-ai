@@ -31,3 +31,12 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Spring Boot ###
+*.log
+
+### IntelliJ ###
+.idea/
+
+### Environment ###
+src/main/resources/application.properties
