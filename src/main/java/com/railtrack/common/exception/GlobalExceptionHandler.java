@@ -1,7 +1,9 @@
 package com.railtrack.common.exception;
 
+import com.railtrack.ai.exception.AiHistoryNotFoundException;
 import com.railtrack.auth.exception.InvalidCredentialsException;
 import com.railtrack.auth.exception.UserAlreadyExistsException;
+import com.railtrack.auth.exception.UserNotFoundException;
 import com.railtrack.common.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -74,6 +76,48 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(HttpStatus.UNAUTHORIZED)
+                .body(error);
+    }
+
+    /**
+     * User Not Found
+     */
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleUserNotFoundException(
+            UserNotFoundException ex,
+            HttpServletRequest request) {
+
+        ErrorResponse error = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.NOT_FOUND.value(),
+                "User Not Found",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(error);
+    }
+
+    /**
+     * AI History Not Found
+     */
+    @ExceptionHandler(AiHistoryNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleAiHistoryNotFoundException(
+            AiHistoryNotFoundException ex,
+            HttpServletRequest request) {
+
+        ErrorResponse error = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.NOT_FOUND.value(),
+                "AI History Not Found",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
                 .body(error);
     }
 

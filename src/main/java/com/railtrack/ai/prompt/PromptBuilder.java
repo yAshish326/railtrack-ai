@@ -6,7 +6,6 @@ import com.railtrack.pnr.dto.response.PnrResponse;
 public class PromptBuilder {
 
     private PromptBuilder() {
-        // Utility class
     }
 
     public static String buildPnrPrompt(PnrResponse response) {
@@ -18,7 +17,6 @@ public class PromptBuilder {
             for (Passenger passenger : response.getData().getPassengerList()) {
 
                 passengerInfo.append(String.format("""
-
                         Passenger %d
                         Booking Status : %s
                         Current Status : %s
@@ -30,40 +28,62 @@ public class PromptBuilder {
                         passenger.getBookingStatusDetails(),
                         passenger.getCurrentStatusDetails(),
                         passenger.getCurrentCoachId(),
-                        passenger.getCurrentBerthNo()
-                ));
+                        passenger.getCurrentBerthNo()));
             }
         }
 
         return String.format("""
-                You are an expert Indian Railway Assistant.
+                You are RailTrack AI, an intelligent Indian Railway travel assistant.
 
-                Explain the following PNR information in simple English.
+                Analyze the PNR details below and explain them in a simple, friendly and useful way.
 
-                Train Name : %s
-                Train Number : %s
-                Source Station : %s
-                Destination Station : %s
-                Boarding Point : %s
-                Journey Class : %s
-                Journey Date : %s
-                Chart Status : %s
-                Ticket Fare : ₹%d
-                Distance : %d KM
+                ===========================
+                TRAIN DETAILS
+                ===========================
+                Train Name        : %s
+                Train Number      : %s
+                From              : %s
+                To                : %s
+                Boarding Point    : %s
+                Journey Class     : %s
+                Journey Date      : %s
+                Chart Status      : %s
+                Ticket Fare       : ₹%d
+                Distance          : %d KM
 
-                Passenger Details:
+                ===========================
+                PASSENGERS
+                ===========================
                 %s
 
-                Instructions:
+                ===========================
+                RESPONSE FORMAT
+                ===========================
 
-                1. Explain whether the ticket is Confirmed, RAC or Waiting.
-                2. Explain the passenger seat information.
-                3. Tell whether the passenger can travel.
-                4. Mention any important travel advice.
-                5. Keep the response under 150 words.
-                6. Respond in simple English.
-                7. Do not use Markdown.
-                8. Be polite and encouraging.
+                Ticket Status:
+                <One sentence>
+
+                Passenger Summary:
+                • Passenger 1 - ...
+                • Passenger 2 - ...
+
+                Can You Travel?
+                <Yes/No with one reason>
+
+                Travel Advice:
+                • Bullet 1
+                • Bullet 2
+
+                IMPORTANT RULES
+
+                - Maximum 90 words.
+                - Use simple English.
+                - Use short sentences.
+                - Do NOT repeat train information.
+                - Do NOT explain every field.
+                - Never use Markdown symbols such as ** or #.
+                - Do not write long paragraphs.
+                - Sound like a railway assistant helping a passenger.
                 """,
 
                 response.getData().getTrainName(),
