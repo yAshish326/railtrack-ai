@@ -7,6 +7,8 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 /*
  * ============================================================================
  * UserController
@@ -49,5 +51,17 @@ public class UserController {
                 userService.updateProfile(request);
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Delete Logged-in User Account
+     */
+    @DeleteMapping("/profile")
+    public ResponseEntity<Map<String, String>> deleteCurrentUser() {
+        userService.deleteCurrentUser();
+
+        return ResponseEntity.ok(
+                Map.of("message", "User account deleted successfully.")
+        );
     }
 }

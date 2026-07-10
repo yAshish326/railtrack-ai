@@ -1,12 +1,16 @@
 package com.railtrack.auth.service.impl;
 
+import com.railtrack.ai.repository.AiHistoryRepository;
 import com.railtrack.auth.dto.request.UpdateProfileRequest;
 import com.railtrack.auth.dto.response.UserResponse;
 import com.railtrack.auth.entity.User;
+import com.railtrack.auth.exception.UserNotFoundException;
 import com.railtrack.auth.mapper.UserMapper;
 import com.railtrack.auth.repository.UserRepository;
 import com.railtrack.auth.service.UserService;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -26,14 +30,20 @@ import org.springframework.stereotype.Service;
 @Service
 public class UserServiceImpl implements UserService {
 
+    private static final Logger log =
+            LoggerFactory.getLogger(UserServiceImpl.class);
+
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final AiHistoryRepository aiHistoryRepository;
 
     public UserServiceImpl(UserRepository userRepository,
-                           UserMapper userMapper) {
+                           UserMapper userMapper,
+                           AiHistoryRepository aiHistoryRepository) {
 
         this.userRepository = userRepository;
         this.userMapper = userMapper;
+        this.aiHistoryRepository = aiHistoryRepository;
     }
 
     /*
@@ -71,6 +81,21 @@ public class UserServiceImpl implements UserService {
         return userMapper.toResponse(updatedUser);
     }
 
+    /**
+     * Deletes the currently authenticated user's account.
+     */
+    @Override
+    @Transactional
+    public void deleteCurrentUser() {
+        User user = getAuthenticatedUser();
+
+        aiHistoryRepository.deleteByUser(user);
+        userRepository.delete(user);
+
+        log.info("User account deleted successfully for email: {}",
+                user.getEmail());
+    }
+
     /*
      * =========================================================================
      * Helper Method
@@ -81,12 +106,13 @@ public class UserServiceImpl implements UserService {
      * Avoids duplicate code in multiple methods (DRY Principle).
      * =========================================================================
      */
-    private User getAuthenticatedUser() {
+    @Override
+    public User getAuthenticatedUser() {
         Authentication authentication =
                 SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();
         return userRepository.findByEmail(email)
                 .orElseThrow(() ->
-                        new RuntimeException("User not found."));
+                        new UserNotFoundException("User not found."));
     }
 }

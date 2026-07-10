@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.List;
 
@@ -37,10 +36,14 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private Boolean enabled = true;
+
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
+        this.enabled = Boolean.TRUE;
     }
 
     @PreUpdate
@@ -95,6 +98,11 @@ public class User implements UserDetails {
         return updatedAt;
     }
 
+
+    public void setEnabled(Boolean enabled) {
+        this.enabled = enabled;
+    }
+
     // ========================================================================
     // Methods required by Spring Security (UserDetails)
     // ========================================================================
@@ -133,6 +141,6 @@ public class User implements UserDetails {
     // User account is enabled.
     @Override
     public boolean isEnabled() {
-        return true;
+        return Boolean.TRUE.equals(enabled);
     }
 }

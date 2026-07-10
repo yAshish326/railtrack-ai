@@ -45,6 +45,9 @@ public class PnrServiceImpl implements PnrService {
         log.info("Searching PNR: {}", pnrNumber);
         log.info("Calling Railway API...");
         PnrResponse response = railwayApiClient.getPnrStatus(pnrNumber);
+        if (response == null || response.getData() == null) {
+            throw new RuntimeException("PNR information is not available.");
+        }
         log.info("Railway API response received successfully.");
 
         Optional<PnrSearchHistory> existingRecord = repository.findByPnrNumber(pnrNumber);
