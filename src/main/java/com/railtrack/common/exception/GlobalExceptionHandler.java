@@ -5,6 +5,7 @@ import com.railtrack.auth.exception.InvalidCredentialsException;
 import com.railtrack.auth.exception.UserAlreadyExistsException;
 import com.railtrack.auth.exception.UserNotFoundException;
 import com.railtrack.common.dto.ErrorResponse;
+import com.railtrack.pnr.exception.PnrHistoryNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -112,6 +113,27 @@ public class GlobalExceptionHandler {
                 LocalDateTime.now(),
                 HttpStatus.NOT_FOUND.value(),
                 "AI History Not Found",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(error);
+    }
+
+    /**
+     * PNR History Not Found
+     */
+    @ExceptionHandler(PnrHistoryNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePnrHistoryNotFoundException(
+            PnrHistoryNotFoundException ex,
+            HttpServletRequest request) {
+
+        ErrorResponse error = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.NOT_FOUND.value(),
+                "PNR History Not Found",
                 ex.getMessage(),
                 request.getRequestURI()
         );

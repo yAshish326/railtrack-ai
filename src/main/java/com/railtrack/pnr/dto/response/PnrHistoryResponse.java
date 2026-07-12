@@ -1,22 +1,16 @@
-package com.railtrack.pnr.entity;
-import com.railtrack.auth.entity.User;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.*;
+package com.railtrack.pnr.dto.response;
+
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "pnr_search_history")
-public class PnrSearchHistory {
+/**
+ * Response DTO representing a user's PNR search history record.
+ */
+public class PnrHistoryResponse {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "pnr_number", nullable = false)
     private String pnrNumber;
-    @Column(nullable = false)
+
     private String trainNumber;
 
     private String trainName;
@@ -31,14 +25,35 @@ public class PnrSearchHistory {
 
     private LocalDateTime searchedAt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
-    public PnrSearchHistory() {
+    public PnrHistoryResponse() {
+    }
+
+    public PnrHistoryResponse(Long id,
+                              String pnrNumber,
+                              String trainNumber,
+                              String trainName,
+                              String sourceStation,
+                              String destinationStation,
+                              String journeyClass,
+                              String chartStatus,
+                              LocalDateTime searchedAt) {
+        this.id = id;
+        this.pnrNumber = pnrNumber;
+        this.trainNumber = trainNumber;
+        this.trainName = trainName;
+        this.sourceStation = sourceStation;
+        this.destinationStation = destinationStation;
+        this.journeyClass = journeyClass;
+        this.chartStatus = chartStatus;
+        this.searchedAt = searchedAt;
     }
 
     public Long getId() {
         return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public String getPnrNumber() {
@@ -105,11 +120,4 @@ public class PnrSearchHistory {
         this.searchedAt = searchedAt;
     }
 
-    public User getUser() {
-        return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
-    }
 }
