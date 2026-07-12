@@ -5,9 +5,8 @@ import com.railtrack.dashboard.dto.DashboardResponse;
 /**
  * Global facade that provides dashboard data for the authenticated user.
  *
- * <p>The controller depends only on this service. Feature modules can add
- * optional dashboard data through {@link DashboardSectionProvider} without
- * requiring controller changes.</p>
+ * <p>The controller depends only on this service, so new dashboard data can
+ * be added without changing the controller contract.</p>
  */
 public interface DashboardService {
 
