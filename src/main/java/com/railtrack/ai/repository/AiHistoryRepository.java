@@ -13,6 +13,10 @@ public interface AiHistoryRepository extends JpaRepository<AiHistory, Long> {
 
     List<AiHistory> findByUserOrderByCreatedAtDesc(User user);
 
+    long countByUser(User user);
+
+    List<AiHistory> findTop5ByUserOrderByCreatedAtDesc(User user);
+
     Optional<AiHistory> findByIdAndUser(Long id, User user);
 
     void deleteByUser(User user);

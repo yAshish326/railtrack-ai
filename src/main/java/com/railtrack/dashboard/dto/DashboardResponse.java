@@ -1,32 +1,27 @@
 package com.railtrack.dashboard.dto;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.railtrack.ai.dto.AiHistoryResponse;
 import com.railtrack.auth.dto.response.UserResponse;
-import com.railtrack.pnr.dto.response.PnrHistoryResponse;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * Response DTO containing authenticated-user dashboard data.
  */
-@JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class DashboardResponse {
 
     private UserResponse user;
-    private List<PnrHistoryResponse> recentPnrSearches;
-    private List<AiHistoryResponse> recentAiHistory;
-    private Map<String, Object> additionalSections;
+    private DashboardStatsResponse stats;
+    private List<DashboardPnrResponse> recentPnrSearches;
+    private List<DashboardAiHistoryResponse> recentAiHistory;
 
     public DashboardResponse(UserResponse user,
-                             List<PnrHistoryResponse> recentPnrSearches,
-                             List<AiHistoryResponse> recentAiHistory,
-                             Map<String, Object> additionalSections) {
+                             DashboardStatsResponse stats,
+                             List<DashboardPnrResponse> recentPnrSearches,
+                             List<DashboardAiHistoryResponse> recentAiHistory) {
         this.user = user;
+        this.stats = stats;
         this.recentPnrSearches = recentPnrSearches;
         this.recentAiHistory = recentAiHistory;
-        this.additionalSections = additionalSections;
     }
 
     public UserResponse getUser() {
@@ -37,29 +32,30 @@ public class DashboardResponse {
         this.user = user;
     }
 
-    public List<PnrHistoryResponse> getRecentPnrSearches() {
+    public DashboardStatsResponse getStats() {
+        return stats;
+    }
+
+    public void setStats(DashboardStatsResponse stats) {
+        this.stats = stats;
+    }
+
+    public List<DashboardPnrResponse> getRecentPnrSearches() {
         return recentPnrSearches;
     }
 
     public void setRecentPnrSearches(
-            List<PnrHistoryResponse> recentPnrSearches) {
+            List<DashboardPnrResponse> recentPnrSearches) {
         this.recentPnrSearches = recentPnrSearches;
     }
 
-    public List<AiHistoryResponse> getRecentAiHistory() {
+    public List<DashboardAiHistoryResponse> getRecentAiHistory() {
         return recentAiHistory;
     }
 
-    public void setRecentAiHistory(List<AiHistoryResponse> recentAiHistory) {
+    public void setRecentAiHistory(
+            List<DashboardAiHistoryResponse> recentAiHistory) {
         this.recentAiHistory = recentAiHistory;
     }
 
-    public Map<String, Object> getAdditionalSections() {
-        return additionalSections;
-    }
-
-    public void setAdditionalSections(
-            Map<String, Object> additionalSections) {
-        this.additionalSections = additionalSections;
-    }
 }

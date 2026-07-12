@@ -19,6 +19,10 @@ public interface PnrSearchHistoryRepository
 
     List<PnrSearchHistory> findByUserOrderBySearchedAtDesc(User user);
 
+    long countByUser(User user);
+
+    List<PnrSearchHistory> findTop5ByUserOrderBySearchedAtDesc(User user);
+
     Optional<PnrSearchHistory> findByIdAndUser(Long id, User user);
 
     void deleteByUser(User user);
