@@ -15,7 +15,9 @@ public class CacheConfig {
     @Bean
     public CacheManager cacheManager() {
         CaffeineCacheManager cacheManager =
-                new CaffeineCacheManager("pnrCache");
+                new CaffeineCacheManager("pnrCache", "railRadarTrainDetails",
+                        "railRadarLiveTrain", "railRadarRoute", "railRadarJourney",
+                        "railRadarStationBoard", "railRadarStationLiveBoard");
         cacheManager.setCaffeine(
                 Caffeine.newBuilder()
                         .initialCapacity(100)

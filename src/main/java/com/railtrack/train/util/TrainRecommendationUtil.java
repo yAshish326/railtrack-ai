@@ -37,27 +37,17 @@ public class TrainRecommendationUtil {
         return switch (type) {
 
             case "VANDE BHARAT" -> 1;
-
             case "RAJDHANI" -> 2;
-
             case "SHATABDI" -> 3;
-
             case "DURONTO" -> 4;
-
             case "HUMSAFAR" -> 5;
-
             case "TEJAS" -> 6;
-
             case "GARIB RATH" -> 7;
-
             case "SUPERFAST" -> 8;
-
             case "MAIL", "EXPRESS" -> 9;
-
             default -> 20;
         };
     }
-
     /**
      * Converts HH:MM into total minutes
      */

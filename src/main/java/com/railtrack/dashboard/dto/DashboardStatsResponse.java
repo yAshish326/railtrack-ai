@@ -5,13 +5,24 @@ package com.railtrack.dashboard.dto;
  */
 public class DashboardStatsResponse {
 
+    private Integer totalTrainSearches;
     private Integer totalPnrSearches;
     private Integer totalAiRequests;
 
-    public DashboardStatsResponse(Integer totalPnrSearches,
+    public DashboardStatsResponse(Integer totalTrainSearches,
+                                  Integer totalPnrSearches,
                                   Integer totalAiRequests) {
+        this.totalTrainSearches = totalTrainSearches;
         this.totalPnrSearches = totalPnrSearches;
         this.totalAiRequests = totalAiRequests;
+    }
+
+    public Integer getTotalTrainSearches() {
+        return totalTrainSearches;
+    }
+
+    public void setTotalTrainSearches(Integer totalTrainSearches) {
+        this.totalTrainSearches = totalTrainSearches;
     }
 
     public Integer getTotalPnrSearches() {
