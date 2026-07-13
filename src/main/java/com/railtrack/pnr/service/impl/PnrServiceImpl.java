@@ -9,6 +9,8 @@ import com.railtrack.pnr.entity.PnrSearchHistory;
 import com.railtrack.pnr.exception.PnrHistoryNotFoundException;
 import com.railtrack.pnr.repository.PnrSearchHistoryRepository;
 import com.railtrack.pnr.service.PnrService;
+import com.railtrack.history.entity.SearchOperation;
+import com.railtrack.history.service.SearchHistoryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -28,14 +30,17 @@ public class PnrServiceImpl implements PnrService {
     private final RailwayApiClient railwayApiClient;
     private final PnrSearchHistoryRepository repository;
     private final UserService userService;
+    private final SearchHistoryService searchHistoryService;
 
     public PnrServiceImpl(RailwayApiClient railwayApiClient,
                           PnrSearchHistoryRepository repository,
-                          UserService userService) {
+                          UserService userService,
+                          SearchHistoryService searchHistoryService) {
 
         this.railwayApiClient = railwayApiClient;
         this.repository = repository;
         this.userService = userService;
+        this.searchHistoryService = searchHistoryService;
     }
 
     private void mapResponseToEntity(PnrSearchHistory history,
@@ -95,6 +100,7 @@ public class PnrServiceImpl implements PnrService {
             log.info("New PNR {} inserted successfully.", pnrNumber);
         }
         log.info("PNR search completed successfully for {}", pnrNumber);
+        searchHistoryService.save(SearchOperation.PNR_SEARCH, pnrNumber, null);
         return response;
     }
 

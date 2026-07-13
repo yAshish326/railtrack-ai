@@ -8,6 +8,9 @@ import com.railtrack.auth.exception.UserNotFoundException;
 import com.railtrack.auth.mapper.UserMapper;
 import com.railtrack.auth.repository.UserRepository;
 import com.railtrack.auth.service.UserService;
+import com.railtrack.pnr.repository.PnrSearchHistoryRepository;
+import com.railtrack.train.repository.TrainSearchHistoryRepository;
+import com.railtrack.history.repository.SearchHistoryRepository;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,14 +39,23 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final AiHistoryRepository aiHistoryRepository;
+    private final PnrSearchHistoryRepository pnrHistoryRepository;
+    private final TrainSearchHistoryRepository trainSearchHistoryRepository;
+    private final SearchHistoryRepository searchHistoryRepository;
 
     public UserServiceImpl(UserRepository userRepository,
                            UserMapper userMapper,
-                           AiHistoryRepository aiHistoryRepository) {
+                           AiHistoryRepository aiHistoryRepository,
+                           PnrSearchHistoryRepository pnrHistoryRepository,
+                           TrainSearchHistoryRepository trainSearchHistoryRepository,
+                           SearchHistoryRepository searchHistoryRepository) {
 
         this.userRepository = userRepository;
         this.userMapper = userMapper;
         this.aiHistoryRepository = aiHistoryRepository;
+        this.pnrHistoryRepository = pnrHistoryRepository;
+        this.trainSearchHistoryRepository = trainSearchHistoryRepository;
+        this.searchHistoryRepository = searchHistoryRepository;
     }
 
     /*
@@ -90,6 +102,10 @@ public class UserServiceImpl implements UserService {
         User user = getAuthenticatedUser();
 
         aiHistoryRepository.deleteByUser(user);
+        pnrHistoryRepository.deleteByUser(user);
+        trainSearchHistoryRepository.deleteAll(
+                trainSearchHistoryRepository.findByUserOrderBySearchedAtDesc(user));
+        searchHistoryRepository.deleteByUser(user);
         userRepository.delete(user);
 
         log.info("User account deleted successfully for email: {}",

@@ -11,17 +11,29 @@ public class DashboardResponse {
 
     private UserResponse user;
     private DashboardStatsResponse stats;
+    private List<DashboardTrainSearchResponse> recentTrainSearches;
     private List<DashboardPnrResponse> recentPnrSearches;
     private List<DashboardAiHistoryResponse> recentAiHistory;
 
     public DashboardResponse(UserResponse user,
                              DashboardStatsResponse stats,
+                             List<DashboardTrainSearchResponse> recentTrainSearches,
                              List<DashboardPnrResponse> recentPnrSearches,
                              List<DashboardAiHistoryResponse> recentAiHistory) {
         this.user = user;
         this.stats = stats;
+        this.recentTrainSearches = recentTrainSearches;
         this.recentPnrSearches = recentPnrSearches;
         this.recentAiHistory = recentAiHistory;
+    }
+
+    public List<DashboardTrainSearchResponse> getRecentTrainSearches() {
+        return recentTrainSearches;
+    }
+
+    public void setRecentTrainSearches(
+            List<DashboardTrainSearchResponse> recentTrainSearches) {
+        this.recentTrainSearches = recentTrainSearches;
     }
 
     public UserResponse getUser() {

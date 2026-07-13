@@ -6,16 +6,42 @@ import com.railtrack.auth.exception.UserAlreadyExistsException;
 import com.railtrack.auth.exception.UserNotFoundException;
 import com.railtrack.common.dto.ErrorResponse;
 import com.railtrack.pnr.exception.PnrHistoryNotFoundException;
+import com.railtrack.train.exception.TrainSearchHistoryNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import jakarta.validation.ConstraintViolationException;
 
 import java.time.LocalDateTime;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    /** Returns a consistent 400 response for validated request parameters. */
+    @ExceptionHandler({ConstraintViolationException.class,
+            MethodArgumentNotValidException.class,
+            MethodArgumentTypeMismatchException.class})
+    public ResponseEntity<ErrorResponse> handleValidationException(
+            Exception ex, HttpServletRequest request) {
+        ErrorResponse error = new ErrorResponse(LocalDateTime.now(),
+                HttpStatus.BAD_REQUEST.value(), "Validation Failed",
+                ex.getMessage(), request.getRequestURI());
+        return ResponseEntity.badRequest().body(error);
+    }
+
+    /** Maps translated RailRadar HTTP and timeout failures to API errors. */
+    @ExceptionHandler(RailRadarClientException.class)
+    public ResponseEntity<ErrorResponse> handleRailRadarClientException(
+            RailRadarClientException ex, HttpServletRequest request) {
+        ErrorResponse error = new ErrorResponse(LocalDateTime.now(),
+                ex.getStatus().value(), ex.getStatus().getReasonPhrase(),
+                ex.getMessage(), request.getRequestURI());
+        return ResponseEntity.status(ex.getStatus()).body(error);
+    }
 
     /**
      * Railway API Exception
@@ -120,6 +146,20 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .body(error);
+    }
+
+    /** Train Search History Not Found */
+    @ExceptionHandler(TrainSearchHistoryNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleTrainSearchHistoryNotFoundException(
+            TrainSearchHistoryNotFoundException ex,
+            HttpServletRequest request) {
+
+        ErrorResponse error = new ErrorResponse(
+                LocalDateTime.now(), HttpStatus.NOT_FOUND.value(),
+                "Train Search History Not Found", ex.getMessage(),
+                request.getRequestURI());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
     /**
