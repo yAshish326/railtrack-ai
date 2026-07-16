@@ -1,7 +1,7 @@
-package com.railtrack.station.controller;
+package com.railtrack.train.controller;
 
 import com.railtrack.common.dto.RailRadarResponse;
-import com.railtrack.station.service.StationService;
+import com.railtrack.train.service.TrainService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Pattern;
@@ -12,8 +12,8 @@ import org.springframework.web.bind.annotation.*;
 /** RailRadar station board endpoints. */
 @Validated @RestController @RequestMapping("/api/v1/station") @Tag(name = "RailRadar stations")
 public class StationController {
-    private final StationService service;
-    public StationController(StationService service) {
+    private final TrainService service;
+    public StationController(TrainService service) {
         this.service = service; }
     @GetMapping("/board/{stationCode}")
     @Operation(summary = "Get the static RailRadar station board")
