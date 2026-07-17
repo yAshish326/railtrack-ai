@@ -14,5 +14,4 @@ public class JourneySegment {
     private String arrivalTime;
 
     private String travelTime;
-
 }

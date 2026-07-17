@@ -1,22 +1,51 @@
 package com.railtrack.ai.dto;
 
-import com.railtrack.pnr.dto.response.PnrResponse;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
-
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class AiPnrResponse {
+    private String currentStatus;       // "CONFIRMED" or "WAITLISTED"
+    private double confirmationChance;   // Percentage estimate (e.g. 65.5)
+    private String aiRecommendation;    // Smart advice text or alternate bus text
+    private boolean alternativeSuggested; // True if percentage < 70%
 
-    private PnrResponse pnrResponse;
+    public AiPnrResponse() {
+    }
 
-    private String aiExplanation;
+    public AiPnrResponse(String currentStatus, double confirmationChance, String aiRecommendation, boolean alternativeSuggested) {
+        this.currentStatus = currentStatus;
+        this.confirmationChance = confirmationChance;
+        this.aiRecommendation = aiRecommendation;
+        this.alternativeSuggested = alternativeSuggested;
+    }
 
-    private LocalDateTime generatedAt;
+    // Getters and Setters
+    public String getCurrentStatus() {
+        return currentStatus;
+    }
 
-    private String model;
+    public void setCurrentStatus(String currentStatus) {
+        this.currentStatus = currentStatus;
+    }
+
+    public double getConfirmationChance() {
+        return confirmationChance;
+    }
+
+    public void setConfirmationChance(double confirmationChance) {
+        this.confirmationChance = confirmationChance;
+    }
+
+    public String getAiRecommendation() {
+        return aiRecommendation;
+    }
+
+    public void setAiRecommendation(String aiRecommendation) {
+        this.aiRecommendation = aiRecommendation;
+    }
+
+    public boolean isAlternativeSuggested() {
+        return alternativeSuggested;
+    }
+
+    public void setAlternativeSuggested(boolean alternativeSuggested) {
+        this.alternativeSuggested = alternativeSuggested;
+    }
 }
