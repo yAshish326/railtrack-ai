@@ -8,6 +8,7 @@ public class DashboardStatsResponse {
     private Integer totalTrainSearches;
     private Integer totalPnrSearches;
     private Integer totalAiRequests;
+    private Integer totalSearches;
 
     public DashboardStatsResponse(Integer totalTrainSearches,
                                   Integer totalPnrSearches,
@@ -15,6 +16,15 @@ public class DashboardStatsResponse {
         this.totalTrainSearches = totalTrainSearches;
         this.totalPnrSearches = totalPnrSearches;
         this.totalAiRequests = totalAiRequests;
+        this.totalSearches = totalTrainSearches + totalPnrSearches + totalAiRequests;
+    }
+
+    public Integer getTotalSearches() {
+        return totalSearches;
+    }
+
+    public void setTotalSearches(Integer totalSearches) {
+        this.totalSearches = totalSearches;
     }
 
     public Integer getTotalTrainSearches() {

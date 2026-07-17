@@ -1,51 +1,48 @@
 package com.railtrack.train.service;
 
-import com.railtrack.common.dto.RailRadarResponse;
+import com.railtrack.train.dto.response.JourneyResponse;
+import com.railtrack.train.dto.response.LiveStationBoardResponse;
+import com.railtrack.train.dto.response.LiveTrainResponse;
 import com.railtrack.train.dto.response.RecommendedTrainResponse;
-import com.railtrack.train.dto.response.TrainSearchResponse;
+import com.railtrack.train.dto.response.StationBoardResponse;
+import com.railtrack.train.dto.response.TrainDetailsResponse;
+import com.railtrack.train.dto.response.TrainRouteResponse;
 
 import java.time.LocalDate;
 
 /**
- * Single domain service for everything RailRadar-backed: legacy train search,
- * AI recommendation, train details/live-status/route, between-station
- * journeys, and station boards.
+ * Single domain service for everything RailRadar-backed: AI recommendation,
+ * train details/live-status/route, between-station journeys, and station
+ * boards. The legacy between-stations search endpoint has been retired in
+ * favor of the RailRadar-backed {@link #betweenStations} as the single
+ * public search capability; the legacy provider is still used internally
+ * by {@link #getRecommendedTrain} only.
+ *
+ * <p>Every method returns an application-owned business DTO - never the raw
+ * {@code RailRadarResponse}/{@code JsonNode} provider payload.
  */
 public interface TrainService {
-
-    // Existing search API
-    TrainSearchResponse searchTrains(String from, String to);
-
-    /**
-     * Performs the existing train search and records its submitted criteria
-     * only after the external search succeeds.
-     */
-    TrainSearchResponse searchTrains(String from, String to,
-                                     LocalDate journeyDate,
-                                     String travelClass, String quota);
 
     // AI recommendation API
     RecommendedTrainResponse getRecommendedTrain(String from, String to);
 
     // RailRadar train details/live-status/route
-    RailRadarResponse trainDetails(String number, LocalDate journeyDate,
-                                   String dataType, String dataProvider,
-                                   String userId);
+    TrainDetailsResponse trainDetails(String number, boolean haltsOnly);
 
-    RailRadarResponse liveTrain(String number, LocalDate date, boolean haltsOnly,
+    LiveTrainResponse liveTrain(String number, LocalDate date, boolean haltsOnly,
                                 boolean geometry, String format,
                                 boolean includeCoordinates);
 
-    RailRadarResponse route(String number, String format, boolean stops);
+    TrainRouteResponse route(String number, String format, boolean stops);
 
     // RailRadar journeys between stations
-    RailRadarResponse betweenStations(String from, String to, LocalDate date,
-                                      boolean live, boolean byCity, String type,
-                                      String category);
+    JourneyResponse betweenStations(String from, String to, LocalDate date,
+                                    boolean live, boolean byCity, String type,
+                                    String category, String quota, String travelClass);
 
     // RailRadar station boards
-    RailRadarResponse stationBoard(String code, boolean includeIntermediate);
+    StationBoardResponse stationBoard(String code, boolean includeIntermediate);
 
-    RailRadarResponse stationLiveBoard(String code, int hours,
-                                       boolean includeIntermediate);
+    LiveStationBoardResponse stationLiveBoard(String code, int hours,
+                                              boolean includeIntermediate);
 }

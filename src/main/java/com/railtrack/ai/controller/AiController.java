@@ -1,88 +1,43 @@
 package com.railtrack.ai.controller;
 
-import com.railtrack.ai.dto.AiChatRequest;
-import com.railtrack.ai.dto.AiChatResponse;
 import com.railtrack.ai.dto.AiPnrResponse;
 import com.railtrack.ai.dto.AiTrainRecommendationResponse;
 import com.railtrack.ai.service.AiService;
-import com.railtrack.pnr.dto.response.PnrResponse;
-import com.railtrack.pnr.service.PnrService;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.Pattern;
+import com.railtrack.train.dto.response.Train;
+import com.railtrack.pnr.dto.response.PnrData;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
-
-/*
- * ============================================================================
- * AiController
- * ----------------------------------------------------------------------------
- * Handles all AI-related REST APIs.
- * ============================================================================
- */
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/ai")
+@CrossOrigin(origins = "*") // Allows smooth connection from your React UI ports
 public class AiController {
 
     private final AiService aiService;
-    private final PnrService pnrService;
 
-    // Constructor Injection
-    public AiController(AiService aiService,
-                        PnrService pnrService) {
+    public AiController(AiService aiService) {
         this.aiService = aiService;
-        this.pnrService = pnrService;
     }
 
-    /*
-     * =========================================================================
-     * AI Chat Endpoint
-     * =========================================================================
+    /**
+     * Endpoint 1: Run analytical assessment on the search results.
+     * Triggered right after the user clicks 'Search' on the main Dashboard view.
      */
-    @PostMapping("/chat")
-    public ResponseEntity<AiChatResponse> chat(
-            @Valid @RequestBody AiChatRequest request) {
-
-        AiChatResponse response =
-                aiService.chat(request.getMessage());
-
+    @PostMapping("/analyze-trains")
+    public ResponseEntity<AiTrainRecommendationResponse> analyzeTrainRoutes(@RequestBody List<Train> trainList) {
+        AiTrainRecommendationResponse response = aiService.generateTrainSuggestions(trainList);
         return ResponseEntity.ok(response);
     }
 
-    /*
-     * =========================================================================
-     * AI PNR Explanation Endpoint
-     * =========================================================================
+    /**
+     * Endpoint 2: Process current confirmation odds for an active PNR query.
+     * Triggered when looking up passenger statuses on the PNR check screen.
      */
-    @GetMapping("/pnr/{pnrNumber}")
-    public ResponseEntity<AiPnrResponse> explainPnr(
-            @PathVariable
-            @Pattern(regexp = "\\d{10}",
-                    message = "PNR number must contain exactly 10 digits")
-            String pnrNumber) {
-
-        PnrResponse pnrResponse = pnrService.getPnrStatus(pnrNumber);
-
-        String explanation = aiService.explainPnr(pnrResponse);
-
-        AiPnrResponse response = new AiPnrResponse(
-                pnrResponse,
-                explanation,
-                LocalDateTime.now(),
-                "Gemini 2.5 Flash"
-        );
-
+    @PostMapping("/analyze-pnr")
+    public ResponseEntity<AiPnrResponse> analyzePnrStatus(@RequestBody PnrData pnrData) {
+        AiPnrResponse response = aiService.analyzePnrStatus(pnrData);
         return ResponseEntity.ok(response);
-    }
-    @GetMapping("/train-recommendation")
-    public ResponseEntity<AiTrainRecommendationResponse> recommendTrain(
-            @RequestParam String from,
-            @RequestParam String to) {
-
-        return ResponseEntity.ok(
-                aiService.recommendTrain(from, to)
-        );
     }
 }

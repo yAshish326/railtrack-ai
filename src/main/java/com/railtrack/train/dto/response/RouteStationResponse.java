@@ -3,6 +3,7 @@ package com.railtrack.train.dto.response;
 import lombok.Builder;
 import lombok.Data;
 
+/** Business-level response for a single stop on a train's route. */
 @Data
 @Builder
 public class RouteStationResponse {
@@ -13,13 +14,21 @@ public class RouteStationResponse {
 
     private String stationName;
 
-    private Integer day;
+    private Integer dayNumber;
 
-    private Double distance;
+    private Double distanceKm;
 
-    private Integer arrival;
+    private String arrival;
 
-    private Integer departure;
+    private String departure;
 
     private Integer haltMinutes;
+
+    private String platform;
+
+    private Double latitude;
+
+    private Double longitude;
+
+    private boolean currentStation;
 }

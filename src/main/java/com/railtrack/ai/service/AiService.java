@@ -1,15 +1,13 @@
 package com.railtrack.ai.service;
 
-import com.railtrack.ai.dto.AiChatResponse;
+import com.railtrack.ai.dto.AiPnrResponse;
 import com.railtrack.ai.dto.AiTrainRecommendationResponse;
-import com.railtrack.pnr.dto.response.PnrResponse;
+import com.railtrack.train.dto.response.Train;
+import com.railtrack.pnr.dto.response.PnrData;
+
+import java.util.List;
 
 public interface AiService {
-
-    AiChatResponse chat(String message);
-
-    String explainPnr(PnrResponse response);
-
-    AiTrainRecommendationResponse recommendTrain(String from, String to);
-
+    AiTrainRecommendationResponse generateTrainSuggestions(List<Train> trains);
+    AiPnrResponse analyzePnrStatus(PnrData pnrData);
 }

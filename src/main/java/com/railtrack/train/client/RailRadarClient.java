@@ -49,12 +49,9 @@ public class RailRadarClient {
     }
 
 
-    @Cacheable(value = "railRadarTrainDetails", key = "#number + ':' + #journeyDate + ':' + #dataType + ':' + #dataProvider + ':' + #userId")
-    public RailRadarResponse trainDetails(
-            String number, LocalDate journeyDate, String dataType, String dataProvider, String userId) {
-        return
-                get("/legacy/trains/" + number,
-                params("journeyDate", journeyDate, "dataType", dataType, "dataProvider", dataProvider, "userId", userId));
+    @Cacheable(value = "railRadarTrainDetails", key = "#number + ':' + #haltsOnly")
+    public RailRadarResponse trainDetails(String number, boolean haltsOnly) {
+        return get("/trains/" + number, params("haltsOnly", haltsOnly));
     }
     @Cacheable(value = "railRadarLiveTrain", key = "#number + ':' + #date + ':' + #haltsOnly + ':' + #geometry + ':' + #format + ':' + #includeCoordinates")
     public RailRadarResponse liveTrain(

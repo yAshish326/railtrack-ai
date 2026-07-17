@@ -2,6 +2,7 @@ package com.railtrack.dashboard.service.impl;
 
 import com.railtrack.ai.entity.AiHistory;
 import com.railtrack.ai.repository.AiHistoryRepository;
+import com.railtrack.ai.service.AiService;
 import com.railtrack.auth.entity.User;
 import com.railtrack.auth.mapper.UserMapper;
 import com.railtrack.auth.service.UserService;
@@ -36,17 +37,20 @@ public class DashboardServiceImpl implements DashboardService {
     private final PnrSearchHistoryRepository pnrHistoryRepository;
     private final AiHistoryRepository aiHistoryRepository;
     private final TrainSearchHistoryRepository trainSearchHistoryRepository;
+    private final AiService aiService;
 
     public DashboardServiceImpl(UserService userService,
                                 UserMapper userMapper,
                                 PnrSearchHistoryRepository pnrHistoryRepository,
                                 AiHistoryRepository aiHistoryRepository,
-                                TrainSearchHistoryRepository trainSearchHistoryRepository) {
+                                TrainSearchHistoryRepository trainSearchHistoryRepository,
+                                AiService aiService) {
         this.userService = userService;
         this.userMapper = userMapper;
         this.pnrHistoryRepository = pnrHistoryRepository;
         this.aiHistoryRepository = aiHistoryRepository;
         this.trainSearchHistoryRepository = trainSearchHistoryRepository;
+        this.aiService = aiService;
     }
 
     /**
