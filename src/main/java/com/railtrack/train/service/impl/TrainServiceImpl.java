@@ -5,15 +5,7 @@ import com.railtrack.history.entity.SearchOperation;
 import com.railtrack.history.service.SearchHistoryService;
 import com.railtrack.train.client.RailRadarClient;
 import com.railtrack.train.dto.request.TrainSearchHistoryRequest;
-import com.railtrack.train.dto.response.JourneyResponse;
-import com.railtrack.train.dto.response.LiveStationBoardResponse;
-import com.railtrack.train.dto.response.LiveTrainResponse;
-import com.railtrack.train.dto.response.RecommendedTrainResponse;
-import com.railtrack.train.dto.response.StationBoardResponse;
-import com.railtrack.train.dto.response.Train;
-import com.railtrack.train.dto.response.TrainDetailsResponse;
-import com.railtrack.train.dto.response.TrainRouteResponse;
-import com.railtrack.train.dto.response.TrainSearchResponse;
+import com.railtrack.train.dto.response.*;
 import com.railtrack.train.mapper.RailRadarMapper;
 import com.railtrack.train.service.TrainSearchHistoryService;
 import com.railtrack.train.service.TrainService;
@@ -23,6 +15,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.format.TextStyle;
+import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
 
 /**
  * Single implementation for all RailRadar-backed train functionality: AI
@@ -110,20 +106,44 @@ public class TrainServiceImpl implements TrainService {
 
         if (response != null && response.success()) {
             searchHistoryService.save(SearchOperation.JOURNEY_BETWEEN_STATIONS, from, to);
-            // Also record into the dedicated train-search history so the
-            // dashboard's "recent train searches" widget keeps working now
-            // that the legacy /between-stations search path is retired.
-            // journeyDate/travelClass/quota are NOT NULL columns on that
-            // table, so only write when the caller actually supplied all
-            // three - otherwise skip this record (the generic SearchHistory
-            // write above still captures the search either way).
             if (date != null && travelClass != null && quota != null) {
                 trainSearchHistoryService.saveSearch(new TrainSearchHistoryRequest(
                         from, to, date, travelClass, quota));
             }
         }
         logDuration("betweenStations", from + "->" + to, start);
-        return mapper.mapBetweenStations(response, from, to);
+
+        // 1. Assign mapped response to a variable instead of returning it immediately
+        JourneyResponse journeyResponse = mapper.mapBetweenStations(response, from, to);
+
+        // 2. Filter list based on day of week if date information is present
+        if (date != null && journeyResponse != null && journeyResponse.getTrains() != null) {
+
+            // Get standard short day name (e.g., "Sat", "Tue")
+            String targetDay = date.getDayOfWeek()
+                    .getDisplayName(java.time.format.TextStyle.SHORT, Locale.ENGLISH);
+
+            // 3. Match against TrainSummaryResponse runningDays list elements cleanly
+            List<com.railtrack.train.dto.response.TrainSummaryResponse> filteredTrains =
+                    journeyResponse.getTrains().stream()
+                            .filter(train -> {
+                                // If runningDays array is missing or empty, keep the train as safe fallback
+                                if (train.getRunningDays() == null || train.getRunningDays().isEmpty()) {
+                                    return true;
+                                }
+
+                                // Matches if the train runs on this specific day (e.g. "Sat") or is "Daily"
+                                return train.getRunningDays().contains(targetDay) ||
+                                        train.getRunningDays().contains("Daily") ||
+                                        train.getRunningDays().contains("All");
+                            })
+                            .collect(Collectors.toList());
+
+            journeyResponse.setTrains(filteredTrains);
+        }
+
+        // 4. Return the filtered journey object at the very end of the execution block
+        return journeyResponse;
     }
 
     @Override
