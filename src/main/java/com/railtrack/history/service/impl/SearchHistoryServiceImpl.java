@@ -12,8 +12,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.Optional;
 
-/** Default implementation for metadata-only external search auditing. */
+/** Default implementation for metadata-only external search auditing with deduplication logic. */
 @Service
 public class SearchHistoryServiceImpl implements SearchHistoryService {
 
@@ -32,6 +34,27 @@ public class SearchHistoryServiceImpl implements SearchHistoryService {
     public void save(SearchOperation operation, String primaryIdentifier,
                      String secondaryIdentifier) {
         User user = userService.getAuthenticatedUser();
+
+        // 🔍 1. Look for an existing identical search query history log row
+        Optional<SearchHistory> existingLog = repository
+                .findTopByUserAndOperationAndPrimaryIdentifierAndSecondaryIdentifierOrderBySearchedAtDesc(
+                        user, operation, primaryIdentifier, secondaryIdentifier);
+
+        if (existingLog.isPresent()) {
+            LocalDateTime lastSearched = existingLog.get().getSearchedAt();
+            long minutesSinceLastSearch = ChronoUnit.MINUTES.between(lastSearched, LocalDateTime.now());
+
+            // ⏱️ 2. If it was searched less than 10 minutes ago, update the timestamp instead of inserting a duplicate row!
+            if (minutesSinceLastSearch < 10) {
+                SearchHistory duplicateRecord = existingLog.get();
+                duplicateRecord.setSearchedAt(LocalDateTime.now());
+                repository.save(duplicateRecord);
+                log.info("Duplicate {} search detected within window. Updated timestamp for user: {}", operation, user.getEmail());
+                return; // Exit early!
+            }
+        }
+
+        // 🆕 3. Save as a brand-new search log row if outside the window
         SearchHistory history = new SearchHistory();
         history.setUser(user);
         history.setOperation(operation);
