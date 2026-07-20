@@ -80,34 +80,57 @@ public class AiServiceImpl implements AiService {
             return new AiPnrResponse("UNKNOWN", 0.0, "Invalid PNR details provided.", false);
         }
 
-        String statusText = pnrData.getChartStatus() != null ? pnrData.getChartStatus().toUpperCase() : "";
-        boolean isConfirmed = statusText.contains("CNF") || statusText.contains("CONFIRMED") || statusText.contains("CHART PREPARED");
+        // 1. Check if passenger list is present and if all are confirmed
+        List<com.railtrack.pnr.dto.response.Passenger> passengers = pnrData.getPassengerList();
 
-        if (isConfirmed) {
-            String confirmedText = "🎉 Your ticket is Confirmed! You are fully cleared to board this journey. Please ensure you carry an original Government-issued Photo ID card to present to the Ticket Examiner (TTE).";
-            return new AiPnrResponse("CONFIRMED", 100.0, confirmedText, false);
-        } else {
-            int waitlistPosition = 45;
-            double confirmationChance = calculateHeuristicChance(waitlistPosition);
-            boolean alternativeSuggested = false;
-            String adviceText;
+        if (passengers != null && !passengers.isEmpty()) {
+            boolean allConfirmed = passengers.stream().allMatch(p -> {
+                String status = p.getCurrentStatus() != null ? p.getCurrentStatus().toUpperCase() : "";
+                String details = p.getCurrentStatusDetails() != null ? p.getCurrentStatusDetails().toUpperCase() : "";
+                return status.contains("CNF") || status.contains("CONFIRMED") || details.contains("CNF");
+            });
 
-            if (confirmationChance < 70.0) {
-                adviceText = String.format(
-                        "⚠️ Your ticket is currently Waitlisted. AI Estimate: There is only a %.1f%% probability of confirmation before charting. " +
-                                "Since the chance is below 70%%, we highly recommend looking into alternate travel modes. You can easily book a direct luxury or express bus from %s to %s for an assured seat.",
-                        confirmationChance, pnrData.getSourceStation(), pnrData.getDestinationStation()
+            if (allConfirmed) {
+                String confirmedText = String.format(
+                        "🎉 All passengers on train %s (%s) are fully CONFIRMED. You are ready for your journey from %s to %s!",
+                        pnrData.getTrainName(), pnrData.getTrainNumber(),
+                        pnrData.getSourceStation(), pnrData.getDestinationStation()
                 );
-                alternativeSuggested = true;
-            } else {
-                adviceText = String.format(
-                        "⏳ Your ticket is currently Waitlisted. AI Estimate: There is a promising %.1f%% chance of your seat shifting to Confirmed before departure. Keep tracking updates!",
-                        confirmationChance
-                );
+                return new AiPnrResponse("CONFIRMED", 100.0, confirmedText, false);
             }
 
-            return new AiPnrResponse("WAITLISTED", confirmationChance, adviceText, alternativeSuggested);
+            // 2. Extract actual Waitlist / RAC numbers dynamically across passengers
+            int maxWlNumber = passengers.stream()
+                    .map(p -> {
+                        String status = p.getCurrentStatus() != null ? p.getCurrentStatus() : p.getBookingStatus();
+                        if (status == null) return 0;
+                        String digits = status.replaceAll("[^0-9]", "");
+                        return digits.isEmpty() ? 0 : Integer.parseInt(digits);
+                    })
+                    .max(Integer::compare)
+                    .orElse(0);
+
+            if (maxWlNumber > 0) {
+                double chance = calculateHeuristicChance(maxWlNumber);
+                boolean altSuggested = chance < 70.0;
+
+                String adviceText = altSuggested
+                        ? String.format("⚠️ Your highest Waitlist position is WL %d. Estimated confirmation chance is %.1f%%. We recommend exploring alternative options from %s to %s.",
+                        maxWlNumber, chance, pnrData.getSourceStation(), pnrData.getDestinationStation())
+                        : String.format("⏳ Ticket is Waitlisted at WL %d with a promising %.1f%% chance of confirmation before charting.",
+                        maxWlNumber, chance);
+
+                return new AiPnrResponse("WAITLISTED", chance, adviceText, altSuggested);
+            }
         }
+
+        // 3. Fallback to Chart Status text only if passenger list is unavailable
+        String chartText = pnrData.getChartStatus() != null ? pnrData.getChartStatus().toUpperCase() : "";
+        if (chartText.contains("CHART PREPARED")) {
+            return new AiPnrResponse("CONFIRMED", 100.0, "Chart prepared. Please check final coach allocation.", false);
+        }
+
+        return new AiPnrResponse("UNKNOWN", 50.0, "Could not determine precise passenger waitlist status.", false);
     }
 
     private String extractDuration(Train train) {
