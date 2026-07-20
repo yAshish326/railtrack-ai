@@ -15,21 +15,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.time.format.TextStyle;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
-/**
- * Single implementation for all RailRadar-backed train functionality: AI
- * recommendation, train details/live-status/route, journeys between
- * stations, and station boards. Backed by the single RailRadarClient, with
- * every provider payload passed through {@link RailRadarMapper} before it
- * leaves this service - callers never see raw RailRadar JSON. The legacy
- * search provider is still used internally by {@link #getRecommendedTrain}
- * to source AI train recommendations, but is no longer exposed as its own
- * public search endpoint.
- */
 @Service
 public class TrainServiceImpl implements TrainService {
 
@@ -57,12 +46,8 @@ public class TrainServiceImpl implements TrainService {
 
     @Override
     public RecommendedTrainResponse getRecommendedTrain(String from, String to) {
-
         TrainSearchResponse response = client.legacySearchTrains(from, to);
-
-        Train bestTrain = recommendationUtil.getBestTrain(
-                response.getData().getTrains());
-
+        Train bestTrain = recommendationUtil.getBestTrain(response.getData().getTrains());
         return new RecommendedTrainResponse(bestTrain, response);
     }
 
@@ -101,8 +86,7 @@ public class TrainServiceImpl implements TrainService {
                                            String type, String category,
                                            String quota, String travelClass) {
         long start = System.currentTimeMillis();
-        RailRadarResponse response = client.betweenStations(from, to, date, live,
-                byCity, type, category);
+        RailRadarResponse response = client.betweenStations(from, to, date, live, byCity, type, category);
 
         if (response != null && response.success()) {
             searchHistoryService.save(SearchOperation.JOURNEY_BETWEEN_STATIONS, from, to);
@@ -113,36 +97,37 @@ public class TrainServiceImpl implements TrainService {
         }
         logDuration("betweenStations", from + "->" + to, start);
 
-        // 1. Assign mapped response to a variable instead of returning it immediately
         JourneyResponse journeyResponse = mapper.mapBetweenStations(response, from, to);
 
-        // 2. Filter list based on day of week if date information is present
+        // ✅ Filter list to ONLY show trains running on the selected day of the week
         if (date != null && journeyResponse != null && journeyResponse.getTrains() != null) {
 
-            // Get standard short day name (e.g., "Sat", "Tue")
+            // Get standard short day name in lowercase (e.g., "sun", "mon") to match the JSON array tokens
             String targetDay = date.getDayOfWeek()
-                    .getDisplayName(java.time.format.TextStyle.SHORT, Locale.ENGLISH);
+                    .getDisplayName(java.time.format.TextStyle.SHORT, Locale.ENGLISH).toLowerCase();
 
-            // 3. Match against TrainSummaryResponse runningDays list elements cleanly
             List<com.railtrack.train.dto.response.TrainSummaryResponse> filteredTrains =
                     journeyResponse.getTrains().stream()
                             .filter(train -> {
-                                // If runningDays array is missing or empty, keep the train as safe fallback
                                 if (train.getRunningDays() == null || train.getRunningDays().isEmpty()) {
                                     return true;
                                 }
 
-                                // Matches if the train runs on this specific day (e.g. "Sat") or is "Daily"
-                                return train.getRunningDays().contains(targetDay) ||
-                                        train.getRunningDays().contains("Daily") ||
-                                        train.getRunningDays().contains("All");
+                                // Convert running days elements to lowercase to match targetDay ("sun") safely
+                                List<String> runningDaysLower = train.getRunningDays().stream()
+                                        .map(String::toLowerCase)
+                                        .collect(Collectors.toList());
+
+                                return runningDaysLower.contains(targetDay) ||
+                                        runningDaysLower.contains("daily") ||
+                                        runningDaysLower.contains("all");
                             })
                             .collect(Collectors.toList());
 
+            // Update the response with only the trains that are actually running on that day
             journeyResponse.setTrains(filteredTrains);
         }
 
-        // 4. Return the filtered journey object at the very end of the execution block
         return journeyResponse;
     }
 
@@ -157,7 +142,7 @@ public class TrainServiceImpl implements TrainService {
 
     @Override
     public LiveStationBoardResponse stationLiveBoard(String code, int hours,
-                                                      boolean includeIntermediate) {
+                                                     boolean includeIntermediate) {
         long start = System.currentTimeMillis();
         RailRadarResponse response = client.stationLiveBoard(code, hours, includeIntermediate);
         record(SearchOperation.STATION_LIVE_BOARD, code, response);
