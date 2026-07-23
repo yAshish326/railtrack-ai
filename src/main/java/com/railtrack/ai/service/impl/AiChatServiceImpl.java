@@ -18,7 +18,7 @@ public class AiChatServiceImpl implements AiChatService {
     public String chat(String prompt) {
         try {
             if (prompt == null || prompt.trim().isEmpty()) {
-                return "Prompt cannot be empty.";
+                return "Prompt cannot be empty.Please enter the Prompt";
             }
             // Executes the model call using Spring AI's native orchestration layer
             return chatModel.call(prompt);
