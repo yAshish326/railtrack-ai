@@ -28,7 +28,7 @@ public class AiHistoryController {
     /**
      * Returns AI history for the authenticated user.
      */
-    @GetMapping({"", "/"})
+    @GetMapping
     public ResponseEntity<List<AiHistoryResponse>> getCurrentUserHistory() {
         return ResponseEntity.ok(aiHistoryService.getCurrentUserHistory());
     }
@@ -47,10 +47,7 @@ public class AiHistoryController {
         );
     }
 
-    /**
-     * Deletes all AI history records for the authenticated user.
-     */
-    @DeleteMapping({"", "/"})
+    @DeleteMapping
     public ResponseEntity<Map<String, String>> deleteCurrentUserHistory() {
         aiHistoryService.deleteCurrentUserHistory();
 

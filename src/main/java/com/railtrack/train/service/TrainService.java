@@ -10,17 +10,7 @@ import com.railtrack.train.dto.response.TrainRouteResponse;
 
 import java.time.LocalDate;
 
-/**
- * Single domain service for everything RailRadar-backed: AI recommendation,
- * train details/live-status/route, between-station journeys, and station
- * boards. The legacy between-stations search endpoint has been retired in
- * favor of the RailRadar-backed {@link #betweenStations} as the single
- * public search capability; the legacy provider is still used internally
- * by {@link #getRecommendedTrain} only.
- *
- * <p>Every method returns an application-owned business DTO - never the raw
- * {@code RailRadarResponse}/{@code JsonNode} provider payload.
- */
+
 public interface TrainService {
 
     // AI recommendation API
