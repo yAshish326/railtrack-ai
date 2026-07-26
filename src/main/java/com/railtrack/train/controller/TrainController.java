@@ -19,14 +19,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 
-/**
- * All train-search, detail, live-status, route, and station-board
- * capabilities live here as a single endpoint per capability (no
- * duplicate/provider-specific routes - see the architecture review notes).
- * Every response returned is a business DTO produced by {@link
- * com.railtrack.train.mapper.RailRadarMapper}; raw RailRadar JSON never
- * reaches the frontend.
- */
 @Validated
 @RestController
 @RequestMapping("/api/v1/train")

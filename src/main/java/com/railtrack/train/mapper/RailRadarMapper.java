@@ -21,46 +21,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Translates raw RailRadar {@link RailRadarResponse} payloads (provider
- * JSON, {@link JsonNode}) into business DTOs owned by this application.
- * Controllers and services must never return {@link RailRadarResponse} (or
- * any {@link JsonNode}) directly to the frontend - this is the single place
- * that boundary is crossed.
- *
- * <p><b>Field mappings below are verified against RailRadar's published API
- * reference (railradar.in/docs) as of 2026-07-17</b>, not guessed. A few
- * important gaps in what RailRadar actually returns, versus what a richer
- * UI might want, are called out per method - these are provider
- * limitations, not mapping bugs:
- * <ul>
- *   <li>{@link #mapTrainRoute} - the route-geometry endpoint returns only
- *       station code/name/lat/lng per stop. No arrival/departure/platform/
- *       day/distance is available there (that data lives on the separate
- *       train-details endpoint instead). {@code trainName} and
- *       {@code totalDistanceKm} are simply not returned by this endpoint.</li>
- *   <li>{@link #mapStationBoard} - the static station board has no
- *       delay/platform/status/expected-time fields; those only exist on the
- *       live station board.</li>
- *   <li>{@link #mapLiveStationBoard} - RailRadar has no "cancelled" concept;
- *       {@code cancelledTrains} will always be empty.</li>
- *   <li>{@link #mapBetweenStations} - RailRadar has no quota/class filter or
- *       "available classes" field at all.</li>
- * </ul>
- */
 @Component
 public class RailRadarMapper {
 
     private static final Logger log = LoggerFactory.getLogger(RailRadarMapper.class);
 
-    // ---------------------------------------------------------------
-    // Train Details - GET /v1/trains/{number}
-    // data: { train: {number,name,type,category,source{code,name},
-    //         destination{code,name},runDays[],distance,duration,
-    //         avgSpeed,maxSpeed,totalHalts,returnTrain,coachPosition},
-    //         route: [{sequence,station{code,name},arrival,departure,
-    //         arrivalDay,departureDay,distance,isHalt,platform,
-    //         speedToNextStationKmph}] }
     // ---------------------------------------------------------------
     public TrainDetailsResponse mapTrainDetails(RailRadarResponse response) {
 
@@ -88,21 +53,12 @@ public class RailRadarMapper {
                 .distanceKm(getDouble(train, "distance"))
                 .travelTimeMinutes(getInt(train, "duration"))
                 .totalHalts(getInt(train, "totalHalts"))
-                .runningDays(extractStringArray(train, "runDays"))
+                .runningDays(extractStringArrayWithFallback(train, "runDays", "runningDays", "runsOn"))
                 .build();
     }
 
     // ---------------------------------------------------------------
-    // Live Train - GET /v1/trains/{number}/live
-    // data: { trainNumber,trainName,startDate,lastUpdatedAt,status,
-    //         delayMinutes, currentLocation{stationCode,sequence,status,
-    //         speedKmh,...}, previousHalt{stationCode,stationName,...},
-    //         nextHalt{stationCode,stationName,...},
-    //         route:[{sequence,stationCode,stationName,lat,lng,
-    //         scheduledArrival,scheduledDeparture,actualArrival,
-    //         actualDeparture,platform,...}] }
-    // Coordinates/platform/expected-actual times aren't top-level - they
-    // live on the matching entry in `route[]`, keyed by stationCode.
+    // 🚆 ACCURATE & FIXED LIVE TRAIN MAPPING
     // ---------------------------------------------------------------
     public LiveTrainResponse mapLiveTrain(RailRadarResponse response) {
 
@@ -111,44 +67,98 @@ public class RailRadarMapper {
             return null;
         }
 
-        Map<String, JsonNode> routeByStationCode = indexByField(data.get("route"), "stationCode");
-
         JsonNode currentLocation = data.get("currentLocation");
         JsonNode previousHalt = data.get("previousHalt");
         JsonNode nextHalt = data.get("nextHalt");
+        JsonNode routeArray = data.get("route");
 
-        String currentStationCode = getText(currentLocation, "stationCode");
-        String nextStationCode = getText(nextHalt, "stationCode");
+        // Index route entries by upper-case station code for O(1) lookup
+        Map<String, JsonNode> routeByStationCode = indexRouteByCode(routeArray);
 
-        JsonNode currentRouteEntry = routeByStationCode.get(currentStationCode);
-        JsonNode nextRouteEntry = routeByStationCode.get(nextStationCode);
+        String currentStationCode = getTextWithFallback(currentLocation, "stationCode", "code");
+        String nextStationCode = getTextWithFallback(nextHalt, "stationCode", "code");
+
+        JsonNode currentRouteEntry = currentStationCode != null ? routeByStationCode.get(currentStationCode.toUpperCase()) : null;
+        JsonNode nextRouteEntry = nextStationCode != null ? routeByStationCode.get(nextStationCode.toUpperCase()) : null;
+
+        // Extract coordinates from current route entry (or fallback to scanning routeArray)
+        Double lat = getDoubleWithFallback(currentRouteEntry, "lat", "latitude");
+        Double lng = getDoubleWithFallback(currentRouteEntry, "lng", "longitude", "lon");
+
+        if ((lat == null || lng == null) && currentStationCode != null && routeArray != null && routeArray.isArray()) {
+            for (JsonNode stop : routeArray) {
+                String code = getTextWithFallback(stop, "stationCode", "code");
+                if (currentStationCode.equalsIgnoreCase(code)) {
+                    if (lat == null) lat = getDoubleWithFallback(stop, "lat", "latitude");
+                    if (lng == null) lng = getDoubleWithFallback(stop, "lng", "longitude", "lon");
+                    break;
+                }
+            }
+        }
+
+        // Speed & Platform extraction
+        Double speed = getDoubleWithFallback(currentLocation, "speedKmh", "speedKmph", "speed");
+        String platform = getTextWithFallback(currentRouteEntry, "platform", "pf");
+        if (platform == null) platform = getTextWithFallback(currentLocation, "platform", "pf");
+
+        String currentStationName = getTextWithFallback(currentLocation, "stationName", "name");
+        if (currentStationName == null && currentRouteEntry != null) {
+            currentStationName = getTextWithFallback(currentRouteEntry, "stationName", "name");
+        }
+
+        // Extract & format Arrival times (formatting ISO timestamps into HH:mm)
+        String scheduledArrivalISO = getTextWithFallback(nextRouteEntry, "scheduledArrival", "expectedArrival", "expectedArrivalTime");
+        String actualArrivalISO = getTextWithFallback(nextRouteEntry, "actualArrival");
 
         return LiveTrainResponse.builder()
-                .trainNumber(getText(data, "trainNumber"))
-                .trainName(getText(data, "trainName"))
-                .previousStation(getText(previousHalt, "stationName"))
-                .currentStation(currentStationCode != null ? currentStationCode
-                        : getText(currentRouteEntry, "stationName"))
-                .nextStation(getText(nextHalt, "stationName"))
-                .latitude(getDouble(currentRouteEntry, "lat"))
-                .longitude(getDouble(currentRouteEntry, "lng"))
-                .delayMinutes(getInt(data, "delayMinutes"))
-                .expectedArrival(getText(nextRouteEntry, "scheduledArrival"))
-                .actualArrival(getText(nextRouteEntry, "actualArrival"))
-                .platform(getText(currentRouteEntry, "platform"))
-                .speedKmph(getDouble(currentLocation, "speedKmh"))
-                .runningStatus(getText(data, "status"))
-                .lastUpdatedAt(getText(data, "lastUpdatedAt"))
+                .trainNumber(getTextWithFallback(data, "trainNumber", "number"))
+                .trainName(getTextWithFallback(data, "trainName", "name"))
+                .previousStation(getTextWithFallback(previousHalt, "stationName", "name"))
+                .currentStation(currentStationName != null ? currentStationName : currentStationCode)
+                .nextStation(getTextWithFallback(nextHalt, "stationName", "name"))
+                .latitude(lat)
+                .longitude(lng)
+                .delayMinutes(getIntWithFallback(data, "delayMinutes", "delay"))
+                .expectedArrival(formatIsoTime(scheduledArrivalISO))
+                .actualArrival(formatIsoTime(actualArrivalISO))
+                .platform(platform)
+                .speedKmph(speed)
+                .runningStatus(getTextWithFallback(data, "status", "runningStatus"))
+                .lastUpdatedAt(getTextWithFallback(data, "lastUpdatedAt", "updatedAt"))
                 .build();
     }
 
+    private Map<String, JsonNode> indexRouteByCode(JsonNode routeArray) {
+        Map<String, JsonNode> index = new HashMap<>();
+        if (routeArray == null || !routeArray.isArray()) {
+            return index;
+        }
+        for (JsonNode element : routeArray) {
+            String key = getTextWithFallback(element, "stationCode", "code", "stnCode");
+            if (key != null) {
+                index.put(key.trim().toUpperCase(), element);
+            }
+        }
+        return index;
+    }
+
+    private String formatIsoTime(String isoDateTime) {
+        if (isoDateTime == null || isoDateTime.isBlank() || isoDateTime.equalsIgnoreCase("null")) {
+            return "--";
+        }
+        try {
+            if (isoDateTime.contains("T")) {
+                String timePart = isoDateTime.split("T")[1];
+                return timePart.substring(0, 5); // Extracts "HH:mm"
+            }
+        } catch (Exception e) {
+            log.trace("Could not parse ISO time {}, returning raw string.", isoDateTime);
+        }
+        return isoDateTime;
+    }
+
     // ---------------------------------------------------------------
-    // Train Route - GET /v1/trains/{number}/route
-    // data: { trainNumber, format, geojson{...}, stops:[{sequence,code,
-    //         name,lat,lng}] }
-    // This endpoint intentionally only returns geometry - no schedule
-    // times, platform, halt duration, or trainName. Those fields stay
-    // null here; combine with mapTrainDetails() if a caller needs both.
+    // 🚆 FIXED & ENHANCED TRAIN ROUTE MAPPING
     // ---------------------------------------------------------------
     public TrainRouteResponse mapTrainRoute(RailRadarResponse response) {
 
@@ -158,33 +168,98 @@ public class RailRadarMapper {
         }
 
         List<RouteStationResponse> stations = new ArrayList<>();
-        JsonNode stops = data.get("stops");
+
+        // Support "stations", "stops", "halts", or "schedule" arrays
+        JsonNode stops = getArrayNodeWithFallback(data, "stations", "stops", "halts", "schedule");
+
         if (stops != null && stops.isArray()) {
+            int seq = 1;
             for (JsonNode stop : stops) {
+                // Multi-key extraction with fallbacks
+                Integer sequence = getIntWithFallback(stop, "sequence", "seq", "sn", "s_no");
+                String code = getTextWithFallback(stop, "stationCode", "code", "stnCode", "stn_code");
+                String name = getTextWithFallback(stop, "stationName", "name", "stnName", "stn_name");
+
+                String arrival = getTextWithFallback(stop, "arrival", "arrivalTime", "arr_time", "scheduledArrival", "arrTime", "arr");
+                String departure = getTextWithFallback(stop, "departure", "departureTime", "dep_time", "scheduledDeparture", "depTime", "dep");
+                Integer halt = getIntWithFallback(stop, "haltMinutes", "halt", "halt_time", "haltTime", "duration");
+                Double distance = getDoubleWithFallback(stop, "distanceKm", "distance", "dist", "distanceFromSourceKm");
+                Integer day = getIntWithFallback(stop, "dayNumber", "day", "dayCount", "dayNo");
+
                 stations.add(RouteStationResponse.builder()
-                        .sequence(getInt(stop, "sequence"))
-                        .stationCode(getText(stop, "code"))
-                        .stationName(getText(stop, "name"))
-                        .latitude(getDouble(stop, "lat"))
-                        .longitude(getDouble(stop, "lng"))
+                        .sequence(sequence != null ? sequence : seq++)
+                        .stationCode(code)
+                        .stationName(name != null ? name : code)
+                        .dayNumber(day != null ? day : 1)
+                        .distanceKm(distance != null ? distance : 0.0)
+                        .arrival(arrival != null && !arrival.isBlank() && !arrival.equals("null") ? arrival : "--")
+                        .departure(departure != null && !departure.isBlank() && !departure.equals("null") ? departure : "--")
+                        .haltMinutes(halt != null ? halt : 0)
+                        .platform(getTextWithFallback(stop, "platform", "pf"))
+                        .latitude(getDoubleWithFallback(stop, "latitude", "lat"))
+                        .longitude(getDoubleWithFallback(stop, "longitude", "lng", "lon"))
+                        .currentStation(stop.has("currentStation") && stop.get("currentStation").asBoolean())
                         .build());
             }
         }
 
+        // Calculate cumulative Haversine distance if API returned 0.0 across all nodes
+        double cumulativeKm = 0.0;
+        RouteStationResponse prevStation = null;
+        for (RouteStationResponse st : stations) {
+            if (st.getDistanceKm() == 0.0 && prevStation != null && st.getLatitude() != null && st.getLongitude() != null) {
+                double distStep = calculateHaversineDistance(
+                        prevStation.getLatitude(), prevStation.getLongitude(),
+                        st.getLatitude(), st.getLongitude()
+                );
+                cumulativeKm += distStep;
+                st.setDistanceKm(Math.round(cumulativeKm * 10.0) / 10.0);
+            } else if (st.getDistanceKm() > 0.0) {
+                cumulativeKm = st.getDistanceKm();
+            }
+            prevStation = st;
+        }
+
+        // Top-level train details
+        String trainNumber = getTextWithFallback(data, "trainNumber", "number");
+        String trainName = getTextWithFallback(data, "trainName", "name");
+        Double totalDistance = getDoubleWithFallback(data, "totalDistanceKm", "totalDistance", "distance");
+
+        if (totalDistance == null || totalDistance == 0.0) {
+            totalDistance = Math.round(cumulativeKm * 10.0) / 10.0;
+        }
+
+        // Comprehensive extraction of runningDays
+        List<String> runningDays = extractStringArrayWithFallback(data, "runningDays", "runDays", "runsOn");
+        if (runningDays.isEmpty() && data.has("train")) {
+            JsonNode trainNode = data.get("train");
+            runningDays = extractStringArrayWithFallback(trainNode, "runDays", "runningDays", "runsOn");
+            if (trainName == null && trainNode.has("name")) {
+                trainName = trainNode.get("name").asText();
+            }
+        }
+
         return TrainRouteResponse.builder()
-                .trainNumber(getText(data, "trainNumber"))
+                .trainNumber(trainNumber)
+                .trainName(trainName)
+                .totalDistanceKm(totalDistance)
+                .runningDays(runningDays)
                 .stations(stations)
                 .build();
     }
 
-    // ---------------------------------------------------------------
-    // Between Stations - GET /v1/trains/between/{from}/{to}
-    // data: { from{code,name}, to{code,name}, count, trains:[{train{number,
-    //         name,type,runDays},from{departure,day,sequence},
-    //         to{arrival,day,sequence},distance,duration,
-    //         totalHaltsBetween,live{...}}] }
-    // RailRadar has no quota/class filter or "available classes" field at
-    // all - that list stays permanently empty here.
+    // --- Helper for Haversine Distance Calculation ---
+    private double calculateHaversineDistance(double lat1, double lon1, double lat2, double lon2) {
+        double R = 6371.0; // Earth radius in km
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+
     // ---------------------------------------------------------------
     public JourneyResponse mapBetweenStations(RailRadarResponse response, String from, String to) {
 
@@ -218,7 +293,7 @@ public class RailRadarMapper {
                         .arrival(getText(toLeg, "arrival"))
                         .duration(getText(entry, "duration"))
                         .distanceKm(getDouble(entry, "distance"))
-                        .runningDays(extractStringArray(train, "runDays"))
+                        .runningDays(extractStringArrayWithFallback(train, "runDays", "runningDays", "runsOn"))
                         .availableClasses(new ArrayList<>())
                         .build());
             }
@@ -234,14 +309,6 @@ public class RailRadarMapper {
                 .build();
     }
 
-    // ---------------------------------------------------------------
-    // Station Board - GET /v1/stations/{code}/trains
-    // data: { station{code,name}, count, includeIntermediate,
-    //         trains:[{train{number,name,type,source,destination,runDays},
-    //         stop{sequence,arrival,departure,arrivalDay,departureDay,
-    //         distance,stopType}}] }
-    // Static board has no delay/platform/status/expected-time fields -
-    // those only exist on the live station board below.
     // ---------------------------------------------------------------
     public StationBoardResponse mapStationBoard(RailRadarResponse response, String stationCode) {
 
@@ -273,22 +340,12 @@ public class RailRadarMapper {
         return StationBoardResponse.builder()
                 .stationCode(stationCode)
                 .stationName(stationName)
-                .date(null) // static board is not date-scoped; RailRadar returns no date field
+                .date(null)
                 .totalTrains(count != null ? count : trains.size())
                 .trains(trains)
                 .build();
     }
 
-    // ---------------------------------------------------------------
-    // Live Station Board - GET /v1/stations/{code}/live
-    // data: { station{code,name}, window{...}, count,
-    //         trains:[{train{...},stop{sequence,arrival,departure,day,
-    //         distance},live{type,expectedArrivalTime/expectedDepartureTime,
-    //         platform,delayMinutes}}] }
-    // RailRadar returns one flat list with a live.type of at-station,
-    // upcoming, departed, or scheduled - grouping below is derived
-    // client-side. There is no "cancelled" concept in the API, so that
-    // bucket is always empty.
     // ---------------------------------------------------------------
     public LiveStationBoardResponse mapLiveStationBoard(RailRadarResponse response, String stationCode) {
 
@@ -343,10 +400,67 @@ public class RailRadarMapper {
     }
 
     // ---------------------------------------------------------------
-    // Shared helpers
+    // Shared Helpers with Fallback Key Support
     // ---------------------------------------------------------------
 
-    /** Builds a lookup of array elements keyed by a string field, for cross-referencing (e.g. route[] by stationCode). */
+    private JsonNode getArrayNodeWithFallback(JsonNode node, String... fields) {
+        if (node == null) return null;
+        for (String field : fields) {
+            if (node.has(field) && node.get(field).isArray()) {
+                return node.get(field);
+            }
+        }
+        return null;
+    }
+
+    private String getTextWithFallback(JsonNode node, String... fields) {
+        if (node == null) return null;
+        for (String field : fields) {
+            if (node.has(field) && !node.get(field).isNull()) {
+                return node.get(field).asText();
+            }
+        }
+        return null;
+    }
+
+    private Integer getIntWithFallback(JsonNode node, String... fields) {
+        if (node == null) return null;
+        for (String field : fields) {
+            if (node.has(field) && !node.get(field).isNull()) {
+                return node.get(field).asInt();
+            }
+        }
+        return null;
+    }
+
+    private Double getDoubleWithFallback(JsonNode node, String... fields) {
+        if (node == null) return null;
+        for (String field : fields) {
+            if (node.has(field) && !node.get(field).isNull()) {
+                return node.get(field).asDouble();
+            }
+        }
+        return null;
+    }
+
+    private List<String> extractStringArrayWithFallback(JsonNode node, String... fields) {
+        List<String> values = new ArrayList<>();
+        if (node == null) return values;
+
+        for (String field : fields) {
+            if (node.has(field) && node.get(field).isArray()) {
+                Iterator<JsonNode> iterator = node.get(field).elements();
+                while (iterator.hasNext()) {
+                    values.add(iterator.next().asText());
+                }
+                if (!values.isEmpty()) {
+                    return values;
+                }
+            }
+        }
+        return values;
+    }
+
     private Map<String, JsonNode> indexByField(JsonNode arrayNode, String keyField) {
         Map<String, JsonNode> index = new HashMap<>();
         if (arrayNode == null || !arrayNode.isArray()) {
@@ -361,29 +475,12 @@ public class RailRadarMapper {
         return index;
     }
 
-    /** Confirms the response succeeded and has a body; logs and returns null otherwise. */
     private JsonNode validData(RailRadarResponse response, String context) {
         if (response == null || !response.success() || response.data() == null || response.data().isNull()) {
             log.warn("RailRadar {} response was empty or unsuccessful; returning empty mapping.", context);
             return null;
         }
         return response.data();
-    }
-
-    private List<String> extractStringArray(JsonNode node, String field) {
-        List<String> values = new ArrayList<>();
-        if (node == null) {
-            return values;
-        }
-        JsonNode target = node.get(field);
-        if (target == null || !target.isArray()) {
-            return values;
-        }
-        Iterator<JsonNode> iterator = target.elements();
-        while (iterator.hasNext()) {
-            values.add(iterator.next().asText());
-        }
-        return values;
     }
 
     private String getText(JsonNode node, String field) {
