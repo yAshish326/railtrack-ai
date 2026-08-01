@@ -10,7 +10,7 @@ import com.railtrack.auth.dto.response.AuthResponse;
 
 public interface AuthService {
 
-    AuthResponse register(RegisterRequest request);
+//    AuthResponse register(RegisterRequest request);
 
     AuthResponse login(LoginRequest request);
 

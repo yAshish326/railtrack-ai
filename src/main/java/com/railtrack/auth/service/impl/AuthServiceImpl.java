@@ -68,49 +68,49 @@ public class AuthServiceImpl implements AuthService {
         this.otpMailService = otpMailService;
     }
 
-    @Override
-    @Transactional
-    public AuthResponse register(RegisterRequest request) {
-
-        log.info("Register request received for email: {}", request.getEmail());
-
-        // Check if email already exists
-        if (userRepository.existsByEmail(request.getEmail())) {
-
-            log.warn("Registration failed. Email already exists: {}", request.getEmail());
-
-            throw new UserAlreadyExistsException(
-                    "Email already registered."
-            );
-        }
-
-        // Convert DTO to Entity
-        User user = userMapper.toEntity(request);
-
-        // Encrypt password
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-
-        // Default role
-        user.setRole(Role.USER);
-
-        // Save user
-        User savedUser = userRepository.save(user);
-
-        log.info("User registered successfully: {}", savedUser.getEmail());
-
-        // Generate JWT
-        String token = jwtService.generateToken(savedUser);
-
-        // Convert Entity to DTO
-        UserResponse userResponse = userMapper.toResponse(savedUser);
-
-        // Return JWT + User
-        return new AuthResponse(
-                "User registered successfully.",
-                token,
-                userResponse
-        );
-    }
+//    @Override
+//    @Transactional
+//    public AuthResponse register(RegisterRequest request) {
+//
+//        log.info("Register request received for email: {}", request.getEmail());
+//
+//        // Check if email already exists
+//        if (userRepository.existsByEmail(request.getEmail())) {
+//
+//            log.warn("Registration failed. Email already exists: {}", request.getEmail());
+//
+//            throw new UserAlreadyExistsException(
+//                    "Email already registered."
+//            );
+//        }
+//
+//        // Convert DTO to Entity
+//        User user = userMapper.toEntity(request);
+//
+//        // Encrypt password
+//        user.setPassword(passwordEncoder.encode(request.getPassword()));
+//
+//        // Default role
+//        user.setRole(Role.USER);
+//
+//        // Save user
+//        User savedUser = userRepository.save(user);
+//
+//        log.info("User registered successfully: {}", savedUser.getEmail());
+//
+//        // Generate JWT
+//        String token = jwtService.generateToken(savedUser);
+//
+//        // Convert Entity to DTO
+//        UserResponse userResponse = userMapper.toResponse(savedUser);
+//
+//        // Return JWT + User
+//        return new AuthResponse(
+//                "User registered successfully.",
+//                token,
+//                userResponse
+//        );
+//    }
 
     @Override
     public AuthResponse login(LoginRequest request) {

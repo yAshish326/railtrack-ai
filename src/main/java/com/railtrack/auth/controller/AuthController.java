@@ -22,16 +22,16 @@ public class AuthController {
         this.authService = authService;
     }
 
-    @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(
-            @RequestBody RegisterRequest request) {
-
-        AuthResponse response = authService.register(request);
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(response);
-    }
+//    @PostMapping("/register")
+//    public ResponseEntity<AuthResponse> register(
+//            @RequestBody RegisterRequest request) {
+//
+//        AuthResponse response = authService.register(request);
+//
+//        return ResponseEntity
+//                .status(HttpStatus.CREATED)
+//                .body(response);
+//    }
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(

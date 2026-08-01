@@ -8,12 +8,7 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
 
-/**
- * Sends OTP emails for the registration and forget-password flows. Kept as
- * its own small component (rather than inline in AuthServiceImpl) so the
- * mail concern can be swapped out (e.g. for a templated HTML mail, or a
- * transactional email provider) without touching auth logic.
- */
+
 @Component
 public class OtpMailService {
 

@@ -1,0 +1,28 @@
+services:
+  railtrack-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: railtrack-api
+    restart: unless-stopped
+
+    ports:
+      - "8081:8081"
+
+    environment:
+      PORT: 8081
+
+      DB_URL: ${DB_URL}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+
+      RAPIDAPI_KEY: ${RAPIDAPI_KEY}
+      RAILRADAR_API_KEY: ${RAILRADAR_API_KEY}
+
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_APP_PASSWORD: ${MAIL_APP_PASSWORD}
