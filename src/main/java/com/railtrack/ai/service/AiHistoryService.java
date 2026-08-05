@@ -8,10 +8,17 @@ import java.util.List;
 public interface AiHistoryService {
 
     /**
-     * Saves a successful AI response for the supplied user.
+     * Saves AI history with PNR number.
      */
     void saveHistory(User user,
                      String pnrNumber,
+                     String prompt,
+                     String aiResponse);
+
+    /**
+     * Saves AI Assistant chat history (without PNR).
+     */
+    void saveHistory(User user,
                      String prompt,
                      String aiResponse);
 
@@ -21,12 +28,12 @@ public interface AiHistoryService {
     List<AiHistoryResponse> getCurrentUserHistory();
 
     /**
-     * Deletes one AI history record belonging to the current user.
+     * Deletes one AI history record.
      */
     void deleteCurrentUserHistory(Long historyId);
 
     /**
-     * Deletes all AI history records belonging to the current user.
+     * Deletes all AI history.
      */
     void deleteCurrentUserHistory();
 }

@@ -1,5 +1,6 @@
 package com.railtrack.ai.service.impl;
 
+import com.railtrack.ai.prompt.PromptBuilder;
 import com.railtrack.ai.service.AiChatService;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.stereotype.Service;
@@ -16,14 +17,20 @@ public class AiChatServiceImpl implements AiChatService {
 
     @Override
     public String chat(String prompt) {
+
+        if (prompt == null || prompt.trim().isEmpty()) {
+            return "Please enter your railway-related question.";
+        }
+
         try {
-            if (prompt == null || prompt.trim().isEmpty()) {
-                return "Prompt cannot be empty.Please enter the Prompt";
-            }
-            // Executes the model call using Spring AI's native orchestration layer
-            return chatModel.call(prompt);
+
+            String finalPrompt = PromptBuilder.buildAssistantPrompt(prompt);
+
+            return chatModel.call(finalPrompt);
+
         } catch (Exception e) {
-            return "❌ AI Analytics Service Error: " + e.getMessage();
+
+            return "Sorry, I couldn't process your request right now. Please try again later.";
         }
     }
 }

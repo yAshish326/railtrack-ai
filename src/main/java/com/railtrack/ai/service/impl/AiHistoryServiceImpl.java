@@ -30,7 +30,7 @@ public class AiHistoryServiceImpl implements AiHistoryService {
     }
 
     /**
-     * Saves a successful AI response for the supplied user.
+     * Saves AI history with PNR.
      */
     @Override
     @Transactional
@@ -46,15 +46,29 @@ public class AiHistoryServiceImpl implements AiHistoryService {
         history.setAiResponse(aiResponse);
 
         aiHistoryRepository.save(history);
-        log.info("AI history saved for user {} and PNR {}",
-                user.getEmail(), pnrNumber);
+
+        log.info("AI history saved for user {}",
+                user.getEmail());
     }
 
     /**
-     * Returns AI history for the currently authenticated user.
+     * Saves AI Assistant history.
+     */
+    @Override
+    @Transactional
+    public void saveHistory(User user,
+                            String prompt,
+                            String aiResponse) {
+
+        saveHistory(user, null, prompt, aiResponse);
+    }
+
+    /**
+     * Returns current user's history.
      */
     @Override
     public List<AiHistoryResponse> getCurrentUserHistory() {
+
         User user = userService.getAuthenticatedUser();
 
         return aiHistoryRepository.findByUserOrderByCreatedAtDesc(user)
@@ -64,35 +78,45 @@ public class AiHistoryServiceImpl implements AiHistoryService {
     }
 
     /**
-     * Deletes one AI history record belonging to the current user.
+     * Deletes one history record.
      */
     @Override
     @Transactional
     public void deleteCurrentUserHistory(Long historyId) {
+
         User user = userService.getAuthenticatedUser();
 
-        AiHistory history = aiHistoryRepository.findByIdAndUser(historyId, user)
-                .orElseThrow(() -> new AiHistoryNotFoundException(
-                        "AI history record not found."
-                ));
+        AiHistory history = aiHistoryRepository
+                .findByIdAndUser(historyId, user)
+                .orElseThrow(() ->
+                        new AiHistoryNotFoundException(
+                                "AI history record not found."
+                        ));
 
         aiHistoryRepository.delete(history);
-        log.info("AI history {} deleted for user {}", historyId, user.getEmail());
+
+        log.info("AI history {} deleted for user {}",
+                historyId,
+                user.getEmail());
     }
 
     /**
-     * Deletes all AI history records belonging to the current user.
+     * Deletes all history.
      */
     @Override
     @Transactional
     public void deleteCurrentUserHistory() {
+
         User user = userService.getAuthenticatedUser();
 
         aiHistoryRepository.deleteByUser(user);
-        log.info("All AI history deleted for user {}", user.getEmail());
+
+        log.info("All AI history deleted for user {}",
+                user.getEmail());
     }
 
     private AiHistoryResponse toResponse(AiHistory history) {
+
         return new AiHistoryResponse(
                 history.getId(),
                 history.getPnrNumber(),

@@ -40,3 +40,4 @@ build/
 
 ### Environment ###
 src/main/resources/application.properties
+README.md
