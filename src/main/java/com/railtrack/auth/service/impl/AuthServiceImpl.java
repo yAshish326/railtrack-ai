@@ -19,6 +19,7 @@ import com.railtrack.auth.mapper.UserMapper;
 import com.railtrack.auth.repository.UserRepository;
 import com.railtrack.auth.repository.VerificationTokenRepository;
 import com.railtrack.auth.service.AuthService;
+import com.railtrack.auth.service.EmailService;
 import com.railtrack.auth.util.OtpGenerator;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
@@ -48,7 +49,7 @@ public class AuthServiceImpl implements AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final VerificationTokenRepository verificationTokenRepository;
-    private final OtpMailService otpMailService;
+    private final EmailService emailService;
 
     public AuthServiceImpl(
             UserRepository userRepository,
@@ -57,7 +58,7 @@ public class AuthServiceImpl implements AuthService {
             JwtService jwtService,
             AuthenticationManager authenticationManager,
             VerificationTokenRepository verificationTokenRepository,
-            OtpMailService otpMailService) {
+            EmailService emailService) {
 
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -65,52 +66,8 @@ public class AuthServiceImpl implements AuthService {
         this.jwtService = jwtService;
         this.authenticationManager = authenticationManager;
         this.verificationTokenRepository = verificationTokenRepository;
-        this.otpMailService = otpMailService;
+        this.emailService = emailService;
     }
-
-//    @Override
-//    @Transactional
-//    public AuthResponse register(RegisterRequest request) {
-//
-//        log.info("Register request received for email: {}", request.getEmail());
-//
-//        // Check if email already exists
-//        if (userRepository.existsByEmail(request.getEmail())) {
-//
-//            log.warn("Registration failed. Email already exists: {}", request.getEmail());
-//
-//            throw new UserAlreadyExistsException(
-//                    "Email already registered."
-//            );
-//        }
-//
-//        // Convert DTO to Entity
-//        User user = userMapper.toEntity(request);
-//
-//        // Encrypt password
-//        user.setPassword(passwordEncoder.encode(request.getPassword()));
-//
-//        // Default role
-//        user.setRole(Role.USER);
-//
-//        // Save user
-//        User savedUser = userRepository.save(user);
-//
-//        log.info("User registered successfully: {}", savedUser.getEmail());
-//
-//        // Generate JWT
-//        String token = jwtService.generateToken(savedUser);
-//
-//        // Convert Entity to DTO
-//        UserResponse userResponse = userMapper.toResponse(savedUser);
-//
-//        // Return JWT + User
-//        return new AuthResponse(
-//                "User registered successfully.",
-//                token,
-//                userResponse
-//        );
-//    }
 
     @Override
     public AuthResponse login(LoginRequest request) {
@@ -118,7 +75,6 @@ public class AuthServiceImpl implements AuthService {
         log.info("Login request received for email: {}", request.getEmail());
 
         try {
-
             // Authenticate username & password
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -128,20 +84,13 @@ public class AuthServiceImpl implements AuthService {
             );
 
         } catch (BadCredentialsException ex) {
-
             log.warn("Invalid login attempt for email: {}", request.getEmail());
-
-            throw new InvalidCredentialsException(
-                    "Invalid email or password."
-            );
+            throw new InvalidCredentialsException("Invalid email or password.");
         }
 
         // Load authenticated user
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() ->
-                        new InvalidCredentialsException(
-                                "Invalid email or password."
-                        ));
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid email or password."));
 
         // Generate JWT
         String token = jwtService.generateToken(user);
@@ -151,7 +100,6 @@ public class AuthServiceImpl implements AuthService {
 
         log.info("User logged in successfully: {}", user.getEmail());
 
-        // Return JWT + User
         return new AuthResponse(
                 "Login successful.",
                 token,
@@ -160,7 +108,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     // =====================================================================
-    // Additive: OTP email verification for registration
+    // OTP email verification for registration
     // =====================================================================
 
     @Override
@@ -190,8 +138,6 @@ public class AuthServiceImpl implements AuthService {
 
         VerificationToken token = consumeValidOtp(email, VerificationTokenType.REGISTRATION, request.getOtpCode());
 
-        // Defensive re-check: guards against a duplicate registration slipping
-        // in between OTP request and verification.
         if (userRepository.existsByEmail(email)) {
             log.warn("Registration verification blocked - email already registered: {}", email);
             throw new UserAlreadyExistsException("Email already registered.");
@@ -227,7 +173,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     // =====================================================================
-    // Additive: forget-password flow
+    // Forget-password flow
     // =====================================================================
 
     @Override
@@ -236,8 +182,6 @@ public class AuthServiceImpl implements AuthService {
 
         String email = validateGmailAddress(request.getEmail());
 
-        // Intentionally the same response whether or not the account exists,
-        // so this endpoint can't be used to enumerate registered emails.
         AuthMessageResponse genericResponse = new AuthMessageResponse(
                 "If an account exists with this email, a password reset code has been sent.");
 
@@ -283,7 +227,6 @@ public class AuthServiceImpl implements AuthService {
     // Shared OTP helpers
     // =====================================================================
 
-    /** Enforces @gmail.com-only addresses; returns the normalized (lowercase) email. */
     private String validateGmailAddress(String email) {
         if (email == null || !GMAIL_PATTERN.matcher(email.trim()).matches()) {
             throw new IllegalArgumentException("Only valid @gmail.com addresses are accepted.");
@@ -291,7 +234,6 @@ public class AuthServiceImpl implements AuthService {
         return email.trim().toLowerCase();
     }
 
-    /** Invalidates any earlier pending OTPs for this email+flow, then generates, stores, and emails a fresh one. */
     private void issueOtp(String email, VerificationTokenType tokenType) {
 
         verificationTokenRepository.deleteByEmailAndTokenType(email, tokenType);
@@ -310,13 +252,12 @@ public class AuthServiceImpl implements AuthService {
         verificationTokenRepository.save(token);
 
         if (tokenType == VerificationTokenType.REGISTRATION) {
-            otpMailService.sendRegistrationOtp(email, rawOtp);
+            emailService.sendRegistrationOtp(email, rawOtp);
         } else {
-            otpMailService.sendPasswordResetOtp(email, rawOtp);
+            emailService.sendPasswordResetOtp(email, rawOtp);
         }
     }
 
-    /** Validates the OTP (exists, not consumed, not expired, matches) and returns the token - does not mark it consumed yet. */
     private VerificationToken consumeValidOtp(String email, VerificationTokenType tokenType, String suppliedOtp) {
 
         if (suppliedOtp == null || suppliedOtp.isBlank()) {
