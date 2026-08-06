@@ -15,17 +15,17 @@ public class EmailService {
 
     private static final Logger log = LoggerFactory.getLogger(EmailService.class);
 
-    @Value("${resend.api.key}")
+    @Value("${brevo.api.key}")
     private String apiKey;
 
-    @Value("${resend.from.email:onboarding@resend.dev}")
+    @Value("${brevo.from.email:aashishyadav326@gmail.com}")
     private String fromEmail;
 
     private final RestClient restClient;
 
     public EmailService() {
         this.restClient = RestClient.builder()
-                .baseUrl("https://api.resend.com")
+                .baseUrl("https://api.brevo.com/v3")
                 .build();
     }
 
@@ -40,7 +40,7 @@ public class EmailService {
                 </div>
                 """.formatted(otpCode);
 
-        sendEmailViaResend(toEmail, subject, htmlContent);
+        sendEmailViaBrevo(toEmail, subject, htmlContent);
     }
 
     public void sendPasswordResetOtp(String toEmail, String otpCode) {
@@ -54,30 +54,30 @@ public class EmailService {
                 </div>
                 """.formatted(otpCode);
 
-        sendEmailViaResend(toEmail, subject, htmlContent);
+        sendEmailViaBrevo(toEmail, subject, htmlContent);
     }
 
-    private void sendEmailViaResend(String toEmail, String subject, String htmlContent) {
+    private void sendEmailViaBrevo(String toEmail, String subject, String htmlContent) {
         try {
             Map<String, Object> requestBody = Map.of(
-                    "from", "RailTrack AI <" + fromEmail + ">",
-                    "to", List.of(toEmail),
+                    "sender", Map.of("name", "RailTrack AI", "email", fromEmail),
+                    "to", List.of(Map.of("email", toEmail)),
                     "subject", subject,
-                    "html", htmlContent
+                    "htmlContent", htmlContent
             );
 
             restClient.post()
-                    .uri("/emails")
-                    .header("Authorization", "Bearer " + apiKey)
+                    .uri("/smtp/email")
+                    .header("api-key", apiKey)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(requestBody)
                     .retrieve()
                     .toBodilessEntity();
 
-            log.info("Email successfully dispatched via Resend API to: {}", toEmail);
+            log.info("Email successfully dispatched via Brevo API to: {}", toEmail);
 
         } catch (Exception e) {
-            log.error("Failed to send email via Resend API to {}: {}", toEmail, e.getMessage(), e);
+            log.error("Failed to send email from Brevo API to {}: {}", toEmail, e.getMessage(), e);
             throw new RuntimeException("Failed to send verification email. Please try again later.", e);
         }
     }
