@@ -1,11 +1,15 @@
 package com.railtrack.auth.jwt;
 
 import com.railtrack.auth.security.CustomUserDetailsService;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -24,12 +28,20 @@ import java.io.IOException;
  * 3. Extracts username from JWT.
  * 4. Loads the latest user details from the database.
  * 5. Validates the JWT.
- * 6. (Next Step) Store authenticated user in Spring Security Context.
+ * 6. Stores the authenticated user in the Spring Security Context.
+ *
+ * An expired, malformed, or tampered token is not a server error - it just
+ * means "this request isn't authenticated". We catch JwtException here and
+ * fall through with no authentication set, so downstream Spring Security
+ * rejects the request with a clean 401/403 instead of this filter throwing
+ * and producing a raw 500 stack trace in the logs.
  * ============================================================================
  */
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     // Service used for extracting and validating JWT
     private final JwtService jwtService;
@@ -63,29 +75,38 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Remove "Bearer " prefix and extract only the JWT
         String jwt = authHeader.substring(7);
 
-        // Extract username/email from JWT
-        String username = jwtService.extractUsername(jwt);
+        try {
+            // Extract username/email from JWT
+            String username = jwtService.extractUsername(jwt);
 
-        // Load latest user details from the database
-        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+            // Load latest user details from the database
+            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-        // Validate JWT
-        if (jwtService.isTokenValid(jwt, userDetails)) {
+            // Validate JWT
+            if (jwtService.isTokenValid(jwt, userDetails)) {
 
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(
-                            userDetails,
-                            null,
-                            userDetails.getAuthorities()
-                    );
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(
+                                userDetails,
+                                null,
+                                userDetails.getAuthorities()
+                        );
 
-            // Add request details
-            authentication.setDetails(
-                    new WebAuthenticationDetailsSource().buildDetails(request)
-            );
+                // Add request details
+                authentication.setDetails(
+                        new WebAuthenticationDetailsSource().buildDetails(request)
+                );
 
-            // Tell Spring Security that this user is authenticated
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+                // Tell Spring Security that this user is authenticated
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            }
+        } catch (JwtException | IllegalArgumentException | UsernameNotFoundException ex) {
+            // Expired / malformed / tampered / unparseable token: treat as
+            // "not authenticated" rather than letting this bubble up as a
+            // 500. Clear any partial context just in case.
+            log.debug("Ignoring invalid JWT on {} {}: {}",
+                    request.getMethod(), request.getRequestURI(), ex.getMessage());
+            SecurityContextHolder.clearContext();
         }
 
         // Continue request processing
