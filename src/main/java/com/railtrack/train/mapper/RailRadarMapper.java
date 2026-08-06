@@ -8,6 +8,7 @@ import com.railtrack.train.dto.response.LiveTrainResponse;
 import com.railtrack.train.dto.response.RouteStationResponse;
 import com.railtrack.train.dto.response.StationBoardResponse;
 import com.railtrack.train.dto.response.StationBoardTrainResponse;
+import com.railtrack.train.dto.response.Station;
 import com.railtrack.train.dto.response.TrainDetailsResponse;
 import com.railtrack.train.dto.response.TrainRouteResponse;
 import com.railtrack.train.dto.response.TrainSummaryResponse;
@@ -274,6 +275,8 @@ public class RailRadarMapper {
         JsonNode toStation = data.get("to");
         String sourceName = fromStation != null ? getText(fromStation, "name") : from;
         String destinationName = toStation != null ? getText(toStation, "name") : to;
+        Station sourceStation = new Station(fromStation != null ? getText(fromStation, "code") : from, sourceName);
+        Station destinationStation = new Station(toStation != null ? getText(toStation, "code") : to, destinationName);
 
         List<TrainSummaryResponse> trains = new ArrayList<>();
         JsonNode trainList = data.get("trains");
@@ -287,8 +290,8 @@ public class RailRadarMapper {
                         .trainNumber(getText(train, "number"))
                         .trainName(getText(train, "name"))
                         .trainType(getText(train, "type"))
-                        .source(sourceName)
-                        .destination(destinationName)
+                        .source(sourceStation)
+                        .destination(destinationStation)
                         .departure(getText(fromLeg, "departure"))
                         .arrival(getText(toLeg, "arrival"))
                         .duration(getText(entry, "duration"))
