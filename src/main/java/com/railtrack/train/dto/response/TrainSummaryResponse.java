@@ -16,9 +16,9 @@ public class TrainSummaryResponse {
 
     private String trainType;
 
-    private String source;
+    private Station source;
 
-    private String destination;
+    private Station destination;
 
     private String departure;
 

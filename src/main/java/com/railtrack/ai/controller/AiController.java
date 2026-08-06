@@ -3,7 +3,7 @@ package com.railtrack.ai.controller;
 import com.railtrack.ai.dto.AiPnrResponse;
 import com.railtrack.ai.dto.AiTrainRecommendationResponse;
 import com.railtrack.ai.service.AiService;
-import com.railtrack.train.dto.response.Train;
+import com.railtrack.train.dto.response.TrainSummaryResponse;
 import com.railtrack.pnr.dto.response.PnrData;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,7 +26,7 @@ public class AiController {
      * Triggered right after the user clicks 'Search' on the main Dashboard view.
      */
     @PostMapping("/analyze-trains")
-    public ResponseEntity<AiTrainRecommendationResponse> analyzeTrainRoutes(@RequestBody List<Train> trainList) {
+    public ResponseEntity<AiTrainRecommendationResponse> analyzeTrainRoutes(@RequestBody List<TrainSummaryResponse> trainList) {
         AiTrainRecommendationResponse response = aiService.generateTrainSuggestions(trainList);
         return ResponseEntity.ok(response);
     }

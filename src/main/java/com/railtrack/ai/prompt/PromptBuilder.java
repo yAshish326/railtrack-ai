@@ -1,6 +1,7 @@
 package com.railtrack.ai.prompt;
 
 import com.railtrack.pnr.dto.response.Passenger;
+import com.railtrack.pnr.dto.response.PnrData;
 import com.railtrack.pnr.dto.response.PnrResponse;
 import com.railtrack.train.dto.response.TrainSummaryResponse;
 
@@ -163,6 +164,35 @@ public class PromptBuilder {
                 dataList.toString()
         );
     }
+
+    /** Builds a recommendation prompt from PNR data already verified by RailTrack. */
+    public static String buildPnrAnalysisPrompt(PnrData pnrData, String status, double chance,
+                                                boolean alternativeSuggested) {
+        return String.format("""
+                You are RailTrack AI. The following PNR data was retrieved and verified by the RailTrack backend.
+                Treat it as the source of truth. Do not say that live data is unavailable and do not invent fields.
+
+                Train: %s (%s)
+                Route: %s to %s
+                Journey date: %s
+                Chart status: %s
+                Calculated ticket status: %s
+                Estimated confirmation chance: %.1f%%
+                Alternative travel suggested: %s
+
+                Give a friendly, practical PNR recommendation in at most 70 words. Explain the status and one next step.
+                Do not use headings, Markdown, or unsupported claims.
+                """,
+                valueOrUnknown(pnrData.getTrainName()), valueOrUnknown(pnrData.getTrainNumber()),
+                valueOrUnknown(pnrData.getSourceStation()), valueOrUnknown(pnrData.getDestinationStation()),
+                valueOrUnknown(pnrData.getDateOfJourney()), valueOrUnknown(pnrData.getChartStatus()),
+                status, chance, alternativeSuggested ? "yes" : "no");
+    }
+
+    private static String valueOrUnknown(String value) {
+        return value == null || value.isBlank() ? "Not available" : value;
+    }
+
     /**
      * Builds the system prompt for the RailTrack AI Assistant.
      */

@@ -1,16 +1,16 @@
 package com.railtrack.ai.dto;
 
-import com.railtrack.train.dto.response.Train;
+import com.railtrack.train.dto.response.TrainSummaryResponse;
 
 public class AiTrainRecommendationResponse {
     private String insightMessage;
-    private Train fastestTrain;
-    private Train longestTrain;
+    private TrainSummaryResponse fastestTrain;
+    private TrainSummaryResponse longestTrain;
 
     public AiTrainRecommendationResponse() {
     }
 
-    public AiTrainRecommendationResponse(String insightMessage, Train fastestTrain, Train longestTrain) {
+    public AiTrainRecommendationResponse(String insightMessage, TrainSummaryResponse fastestTrain, TrainSummaryResponse longestTrain) {
         this.insightMessage = insightMessage;
         this.fastestTrain = fastestTrain;
         this.longestTrain = longestTrain;
@@ -25,19 +25,19 @@ public class AiTrainRecommendationResponse {
         this.insightMessage = insightMessage;
     }
 
-    public Train getFastestTrain() {
+    public TrainSummaryResponse getFastestTrain() {
         return fastestTrain;
     }
 
-    public void setFastestTrain(Train fastestTrain) {
+    public void setFastestTrain(TrainSummaryResponse fastestTrain) {
         this.fastestTrain = fastestTrain;
     }
 
-    public Train getLongestTrain() {
+    public TrainSummaryResponse getLongestTrain() {
         return longestTrain;
     }
 
-    public void setLongestTrain(Train longestTrain) {
+    public void setLongestTrain(TrainSummaryResponse longestTrain) {
         this.longestTrain = longestTrain;
     }
 }
