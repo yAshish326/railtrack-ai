@@ -27,8 +27,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http)
-            throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -37,20 +36,23 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/api/v1/auth/**",
-                                "/api/v1/ai/**",
-                                "/api/v1/public/**", // 👈 Added here to keep your server awake
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**"
-                        ).permitAll()
-
+                        // 1. Specific protected routes MUST come first
                         .requestMatchers(
                                 "/api/v1/ai/history",
                                 "/api/v1/ai/history/**",
                                 "/api/v1/ai/pnr/**"
                         ).authenticated()
 
+                        // 2. Broad public endpoints second
+                        .requestMatchers(
+                                "/api/v1/auth/**",
+                                "/api/v1/ai/**",
+                                "/api/v1/public/**",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**"
+                        ).permitAll()
+
+                        // 3. Fallback for all other endpoints
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(
@@ -65,16 +67,18 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:4200",
-                "http://127.0.0.1:4200"
+        // Allows local dev ports as well as cloud deployment origins (Vercel, Render, Netlify)
+        configuration.setAllowedOriginPatterns(List.of(
+                "http://localhost:*",
+                "http://127.0.0.1:*",
+                "https://*.vercel.app",
+                "https://*.netlify.app",
+                "https://*.onrender.com"
         ));
 
-        configuration.setAllowedMethods(List.of(
-                "GET", "POST", "PUT", "DELETE", "OPTIONS"
-        ));
-
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
+        configuration.setExposedHeaders(List.of("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
