@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 
@@ -23,6 +24,13 @@ public class OtpMailService {
         this.mailSender = mailSender;
     }
 
+    /**
+     * Fire-and-forget: the OTP is already generated and saved to the DB by
+     * the caller *before* this runs, so a slow/failed email send no longer
+     * blocks or fails the /send-otp HTTP response. Failures are logged here
+     * (and nowhere else) - check logs if users report "OTP never arrived".
+     */
+    @Async("otpMailExecutor")
     public void sendRegistrationOtp(String toEmail, String otpCode) {
         send(toEmail, "RailTrack AI - Verify your email",
                 "Your RailTrack AI registration OTP is: " + otpCode
@@ -30,6 +38,7 @@ public class OtpMailService {
                         + "If you did not request this, you can safely ignore this email.");
     }
 
+    @Async("otpMailExecutor")
     public void sendPasswordResetOtp(String toEmail, String otpCode) {
         send(toEmail, "RailTrack AI - Password reset code",
                 "Your RailTrack AI password reset OTP is: " + otpCode
@@ -47,8 +56,9 @@ public class OtpMailService {
             mailSender.send(message);
             log.info("OTP email dispatched to {}", toEmail);
         } catch (MailException ex) {
-            log.error("Failed to send OTP email to {}: {}", toEmail, ex.getMessage());
-            throw new IllegalStateException("Could not send verification email. Please try again shortly.");
+            // Async context: nothing is listening for a thrown exception here,
+            // so log it clearly instead of throwing into the void.
+            log.error("Failed to send OTP email to {}: {}", toEmail, ex.getMessage(), ex);
         }
     }
 }
