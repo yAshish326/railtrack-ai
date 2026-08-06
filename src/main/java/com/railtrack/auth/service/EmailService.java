@@ -77,7 +77,7 @@ public class EmailService {
             log.info("Email successfully dispatched via Brevo API to: {}", toEmail);
 
         } catch (Exception e) {
-            log.error("Failed to send email via Brevo API to {}: {}", toEmail, e.getMessage(), e);
+            log.error("Failed to send email from Brevo API to {}: {}", toEmail, e.getMessage(), e);
             throw new RuntimeException("Failed to send verification email. Please try again later.", e);
         }
     }
