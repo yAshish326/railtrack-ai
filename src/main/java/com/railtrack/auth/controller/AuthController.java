@@ -5,6 +5,7 @@ import com.railtrack.auth.dto.request.OtpRequest;
 import com.railtrack.auth.dto.request.RegisterRequest;
 import com.railtrack.auth.dto.request.RegisterVerifyRequest;
 import com.railtrack.auth.dto.request.ResetPasswordRequest;
+import com.railtrack.auth.dto.request.VerifyOtpRequest;
 import com.railtrack.auth.dto.response.AuthMessageResponse;
 import com.railtrack.auth.dto.response.AuthResponse;
 import com.railtrack.auth.service.AuthService;
@@ -75,6 +76,19 @@ public class AuthController {
             @RequestBody OtpRequest request) {
 
         AuthMessageResponse response = authService.sendPasswordResetOtp(request);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Checks a reset OTP without consuming it. The same OTP must still be
+     * included in /password/reset, where it is consumed after a successful reset.
+     */
+    @PostMapping({"/password/verify", "/password/verify-otp"})
+    public ResponseEntity<AuthMessageResponse> verifyPasswordResetOtp(
+            @RequestBody VerifyOtpRequest request) {
+
+        AuthMessageResponse response = authService.verifyPasswordResetOtp(request);
 
         return ResponseEntity.ok(response);
     }
