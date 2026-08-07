@@ -5,6 +5,7 @@ import com.railtrack.auth.dto.request.OtpRequest;
 import com.railtrack.auth.dto.request.RegisterRequest;
 import com.railtrack.auth.dto.request.RegisterVerifyRequest;
 import com.railtrack.auth.dto.request.ResetPasswordRequest;
+import com.railtrack.auth.dto.request.VerifyOtpRequest;
 import com.railtrack.auth.dto.response.AuthMessageResponse;
 import com.railtrack.auth.dto.response.AuthResponse;
 
@@ -25,6 +26,8 @@ public interface AuthService {
     // Additive: forget-password flow
     // ---------------------------------------------------------------
     AuthMessageResponse sendPasswordResetOtp(OtpRequest request);
+
+    AuthMessageResponse verifyPasswordResetOtp(VerifyOtpRequest request);
 
     AuthMessageResponse resetPassword(ResetPasswordRequest request);
 }

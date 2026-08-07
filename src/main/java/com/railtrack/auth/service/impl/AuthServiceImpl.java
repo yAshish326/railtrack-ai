@@ -5,6 +5,7 @@ import com.railtrack.auth.dto.request.OtpRequest;
 import com.railtrack.auth.dto.request.RegisterRequest;
 import com.railtrack.auth.dto.request.RegisterVerifyRequest;
 import com.railtrack.auth.dto.request.ResetPasswordRequest;
+import com.railtrack.auth.dto.request.VerifyOtpRequest;
 import com.railtrack.auth.dto.response.AuthMessageResponse;
 import com.railtrack.auth.dto.response.AuthResponse;
 import com.railtrack.auth.dto.response.UserResponse;
@@ -194,6 +195,16 @@ public class AuthServiceImpl implements AuthService {
         );
 
         return genericResponse;
+    }
+
+    @Override
+    @Transactional
+    public AuthMessageResponse verifyPasswordResetOtp(VerifyOtpRequest request) {
+
+        String email = validateGmailAddress(request.getEmail());
+        consumeValidOtp(email, VerificationTokenType.FORGET_PASSWORD, request.getOtpCode());
+
+        return new AuthMessageResponse("OTP verified. You can now set a new password.");
     }
 
     @Override
