@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDate;
 
 @Component
 public class RailRadarMapper {
@@ -313,11 +314,29 @@ public class RailRadarMapper {
     }
 
     // ---------------------------------------------------------------
-    public StationBoardResponse mapStationBoard(RailRadarResponse response, String stationCode) {
+    public StationBoardResponse mapStationBoard(RailRadarResponse response,
+                                                RailRadarResponse liveResponse,
+                                                String stationCode) {
 
         JsonNode data = validData(response, "stationBoard");
+        JsonNode liveData = validData(liveResponse, "stationBoard live enrichment");
         List<StationBoardTrainResponse> trains = new ArrayList<>();
         String stationName = null;
+        Map<String, JsonNode> liveByTrainNumber = new HashMap<>();
+
+        if (liveData != null) {
+            JsonNode liveTrains = liveData.get("trains");
+            if (liveTrains != null && liveTrains.isArray()) {
+                for (JsonNode entry : liveTrains) {
+                    String trainNumber = getText(entry.get("train"), "number");
+                    if (trainNumber != null) {
+                        // Keep the whole entry: expected times/status are in
+                        // "live", while the live-board platform is in "stop".
+                        liveByTrainNumber.put(trainNumber, entry);
+                    }
+                }
+            }
+        }
 
         if (data != null) {
             JsonNode station = data.get("station");
@@ -328,11 +347,29 @@ public class RailRadarMapper {
                 for (JsonNode entry : trainList) {
                     JsonNode train = entry.get("train");
                     JsonNode stop = entry.get("stop");
+                    String trainNumber = getText(train, "number");
+                    JsonNode liveEntry = liveByTrainNumber.get(trainNumber);
+                    JsonNode live = liveEntry != null ? liveEntry.get("live") : null;
+                    JsonNode liveStop = liveEntry != null ? liveEntry.get("stop") : null;
+                    String platform = getTextWithFallback(live, "platform", "pf");
+                    if (platform == null) {
+                        platform = getTextWithFallback(liveStop, "platform", "pf");
+                    }
+                    if (platform == null) {
+                        platform = getTextWithFallback(stop, "platform", "pf");
+                    }
                     trains.add(StationBoardTrainResponse.builder()
-                            .trainNumber(getText(train, "number"))
+                            .trainNumber(trainNumber)
                             .trainName(getText(train, "name"))
                             .arrival(getText(stop, "arrival"))
                             .departure(getText(stop, "departure"))
+                            .expectedArrival(getTextWithFallback(live,
+                                    "expectedArrivalTime", "expectedArrival"))
+                            .expectedDeparture(getTextWithFallback(live,
+                                    "expectedDepartureTime", "expectedDeparture"))
+                            .delayMinutes(getIntWithFallback(live, "delayMinutes", "delay"))
+                            .platform(platform)
+                            .status(getTextWithFallback(live, "type", "status"))
                             .build());
                 }
             }
@@ -343,7 +380,7 @@ public class RailRadarMapper {
         return StationBoardResponse.builder()
                 .stationCode(stationCode)
                 .stationName(stationName)
-                .date(null)
+                .date(LocalDate.now())
                 .totalTrains(count != null ? count : trains.size())
                 .trains(trains)
                 .build();
