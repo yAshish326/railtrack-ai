@@ -40,3 +40,5 @@ build/
 
 ### Environment ###
 README.md
+# ZIP / archive files
+*.zip
