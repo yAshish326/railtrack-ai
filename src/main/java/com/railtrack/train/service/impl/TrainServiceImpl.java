@@ -268,9 +268,19 @@ public class TrainServiceImpl implements TrainService {
     public StationBoardResponse stationBoard(String code, boolean includeIntermediate) {
         long start = System.currentTimeMillis();
         RailRadarResponse response = client.stationBoard(code, includeIntermediate);
+        RailRadarResponse liveResponse = null;
+
+        // Preserve the scheduled board even when the optional live feed is
+        // temporarily unavailable. The live feed only enriches matching rows.
+        try {
+            liveResponse = client.stationLiveBoard(code, 4, includeIntermediate);
+        } catch (Exception exception) {
+            log.warn("Live station-board enrichment unavailable for {}: {}", code, exception.getMessage());
+        }
+
         record(SearchOperation.STATION_BOARD, code, response);
         logDuration("stationBoard", code, start);
-        return mapper.mapStationBoard(response, code);
+        return mapper.mapStationBoard(response, liveResponse, code);
     }
 
     @Override
