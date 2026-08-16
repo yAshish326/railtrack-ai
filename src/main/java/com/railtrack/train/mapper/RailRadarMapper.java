@@ -209,7 +209,9 @@ public class RailRadarMapper {
         double cumulativeKm = 0.0;
         RouteStationResponse prevStation = null;
         for (RouteStationResponse st : stations) {
-            if (st.getDistanceKm() == 0.0 && prevStation != null && st.getLatitude() != null && st.getLongitude() != null) {
+            if (st.getDistanceKm() == 0.0 && prevStation != null
+                    && st.getLatitude() != null && st.getLongitude() != null
+                    && prevStation.getLatitude() != null && prevStation.getLongitude() != null) {
                 double distStep = calculateHaversineDistance(
                         prevStation.getLatitude(), prevStation.getLongitude(),
                         st.getLatitude(), st.getLongitude()
